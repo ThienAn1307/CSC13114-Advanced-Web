@@ -2,6 +2,10 @@
 
 `proposal.md` is kept exactly as submitted for PA#1. This file records what has changed since, and why.
 
+## 2026-10-12 — new name: DM2Order
+
+The product is renamed from "Chốt Đơn" to **DM2Order**: a customer's DMs become an order. The name says what the product does now that chats come in from Instagram and Messenger DMs, and reads the same to Vietnamese and English speakers.
+
 ## 2026-10-12 — messages come in through the platform APIs
 
 **What changed**
