@@ -8,7 +8,7 @@
 - Staff no longer paste chats or screenshots. Each shop connects its Instagram professional account (Instagram API with Instagram Login) and its Facebook Page (Messenger Platform). Customer messages arrive by webhook into an inbox in the app; messages the shop sends arrive as echoes (`is_echo`), so every message is stored with its sender.
 - "Create order" on a conversation gives the LLM the messages since the last confirmed order (or from a message staff pick), not a whole pasted thread.
 - The confirmation link goes back into the same conversation through the Send API, inside the 24-hour reply window.
-- Shops that sell through personal Zalo accounts (no official API) can still paste the chat as text.
+- Zalo is out of scope this semester. Shops sell through personal Zalo accounts, which have no official API, and a paste fallback would bring back the problems below.
 - Staff screenshots of chats are dropped from scope. Images a customer sends inside a chat are shown to staff next to the draft; the product field stays empty and red until staff pick the item. The LLM does not match photos to the catalogue.
 
 **Why**
@@ -22,7 +22,8 @@
 - Shops on personal Instagram accounts would have to switch to a professional account (free).
 
 **Effect on the proposal**
-- Section 3: Instagram and Messenger APIs move from Out to In. Out instead: personal Zalo and Instagram accounts, App Review for shops we do not manage, matching product photos with the LLM.
+- Section 1: Linh keeps selling on Instagram and Zalo, but only her Instagram and Facebook Page chats come into the app; Zalo orders stay manual.
+- Section 3: Instagram and Messenger APIs move from Out to In. Out instead: Zalo (no paste fallback either), personal Instagram accounts, App Review for shops we do not manage, matching product photos with the LLM.
 - Section 5: Risk 2 becomes "Meta API access or webhook setup blocks the inbox". This week: create the test Instagram professional account, connect it in development mode, and confirm the webhook delivers both a customer message and an echo.
 - Section 6: add Instagram API with Instagram Login and Messenger Platform (free; webhooks use the public URL we already need for VNPay). Gemini now reads chat text only, so the screenshot token cost no longer applies.
 - Section 4: who builds the inbox and the platform connection is still to be agreed by the team.
