@@ -18,7 +18,7 @@ Sources, highest first: the class brief, the product owners' FAQ, then `docs/dec
 
 - The endpoint lives under `/v1`.
 - Requests and responses are JSON in UTF-8. A success has `Content-Type: application/json`; an error has `Content-Type: application/problem+json` (section 2).
-- Ids are UUIDs, returned in lowercase canonical form, e.g. `0b7f3c1e-5a2d-4e8b-9c41-2f6d8a1b3e70`.
+- Ids are UUIDs, returned in lowercase canonical form and accepted in either case, e.g. `0b7f3c1e-5a2d-4e8b-9c41-2f6d8a1b3e70`.
 - Timestamps are ISO 8601 strings in UTC with milliseconds, e.g. `2026-11-11T14:59:12.345Z`.
 - Sizes are integers in bytes. 64 KB means 65,536 bytes.
 - Clients ignore response fields they do not know. The server ignores request body fields it does not know; they also do not count when two bodies are compared for idempotency (section 4.5).
@@ -75,7 +75,7 @@ Content-Type: application/problem+json
 | `lab-closed`              | 409    | Lab closed               | the request was received at or after the deadline                                                                                                                                        | does not retry; there is no late submission  |
 | `source-too-large`        | 413    | Source too large         | `source` is over 65,536 bytes in UTF-8, or the whole body is over 262,144 bytes                                                                                                          | sends shorter source                         |
 | `unsupported-media-type`  | 415    | Unsupported media type   | the request has no `Content-Type` header, or its media type is not `application/json` (a `charset=utf-8` parameter is allowed; media type and parameter are compared case-insensitively) | sends the body as `application/json`         |
-| `idempotency-key-reused`  | 422    | Idempotency-Key reused   | the key was already used by this student for this lab, in the last 24 hours, with a different body                                                                                       | uses a new key for a new submission          |
+| `idempotency-key-reused`  | 422    | Idempotency-Key reused   | the key was already used by this student for this lab and has not expired (section 4.5), with a different body                                                                           | uses a new key for a new submission          |
 | `validation-failed`       | 422    | Invalid request body     | the body breaks a field rule in section 4.2                                                                                                                                              | fixes every field listed in `errors`         |
 | `internal`                | 500    | Internal error           | anything else. `detail` is a fixed, generic sentence                                                                                                                                     | retries later with the **same** key and body |
 
@@ -95,13 +95,13 @@ A client that meets a `type` it does not know (a later version may add one, sect
 }
 ```
 
-| Field        | Type and format          | Meaning                                                                                                      |
-| ------------ | ------------------------ | ------------------------------------------------------------------------------------------------------------ |
-| `id`         | string, UUID             | the new submission's id; the same id ends the `Location` header                                              |
-| `labId`      | string, UUID             | the lab from the path                                                                                        |
-| `status`     | string                   | always `"queued"` in this response: the submission is stored and waits to be judged. Judging is asynchronous |
-| `receivedAt` | string, ISO 8601 UTC     | the time the server received the request. This is the time compared with the deadline                        |
-| `sizeBytes`  | integer from 1 to 65,536 | the length of `source` in UTF-8 bytes                                                                        |
+| Field        | Type and format          | Meaning                                                                                                                                                                                      |
+| ------------ | ------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `id`         | string, UUID             | the new submission's id; the same id ends the `Location` header                                                                                                                              |
+| `labId`      | string, UUID             | the lab from the path                                                                                                                                                                        |
+| `status`     | string                   | always `"queued"` in this response: the submission is stored and waits to be judged. Judging is asynchronous                                                                                 |
+| `receivedAt` | string, ISO 8601 UTC     | the time the server received the request, taken once and truncated to milliseconds. That one value is stored, returned in the receipt (unchanged on a replay) and compared with the deadline |
+| `sizeBytes`  | integer from 1 to 65,536 | the length of `source` in UTF-8 bytes                                                                                                                                                        |
 
 ## 4. Endpoint
 
@@ -124,7 +124,7 @@ Idempotency-Key: 9d4f1a2b-7c3e-4b5a-8f60-1e2d3c4b5a69
 
 | Part                     | Rule                                                                                                                                                                                                                                                                                   |
 | ------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `labId` (path)           | the lab's UUID. Anything that is not a UUID is `404 lab-not-found`, not a validation error                                                                                                                                                                                             |
+| `labId` (path)           | the lab's UUID, compared case-insensitively; the receipt's `labId` is always lower case. Anything that is not a UUID is `404 lab-not-found`, not a validation error                                                                                                                    |
 | `Content-Type` header    | required: `application/json`, optionally with a `charset=utf-8` parameter; media type and parameter are compared case-insensitively. A missing header, another media type or another charset is `415 unsupported-media-type`, decided from the header alone before the body is read    |
 | `Idempotency-Key` header | required; missing is `400 idempotency-key-missing`. 1 to 255 characters, each a visible ASCII character (`!` to `~`), else `400 idempotency-key-invalid`. Compared exactly, case included. One new key per submission the client intends to make; a UUID is a good choice              |
 | body                     | a JSON object, else `422 validation-failed` with pointer `""` (for example `[]`, `"text"` or `null`)                                                                                                                                                                                   |
@@ -153,7 +153,7 @@ The server checks in this order and stops at the first step that fails. **This o
 6. The `Idempotency-Key` header is missing: `400 idempotency-key-missing`. It is present but breaks the key rules (section 4.2): `400 idempotency-key-invalid`.
 7. The body breaks a field rule: `422 validation-failed`, listing every broken field. Only when every field rule holds is the size checked: `source` over 65,536 bytes is `413 source-too-large`.
 8. No lab with that `labId` exists in a class the student is a member of: `404 lab-not-found`.
-9. The key was already used by this student for this lab in the last 24 hours: same body, the original 202 is replayed; different body, `422 idempotency-key-reused` (section 4.5).
+9. The key was already used by this student for this lab and has not expired (section 4.5): same body, the original 202 is replayed; different body, `422 idempotency-key-reused` (section 4.5).
 10. The request was received before the lab opens: `409 lab-not-open`. At or after the deadline: `409 lab-closed`.
 11. The submission is created: `202`.
 
@@ -171,24 +171,24 @@ A client that gets no answer (a timeout, a dropped connection) sends the same re
 - When step 11 succeeds, the server stores the key, a fingerprint of the body and the submission, **in the same transaction as the submission**.
 - **Only a 202 is stored.** A request that ends in any 4xx or 5xx stores nothing, so the client may fix the request and send it again with the same key.
 - Two bodies are _the same_ when they are equal as JSON values after unknown fields are dropped. In v1 that means the same `source` string. Key order and whitespace between JSON tokens do not count; any difference inside `source`, whitespace included, does.
-- A stored key expires 24 hours after it was stored.
+- A stored key expires 24 hours after the original request's `receivedAt`.
 
-| Situation                                                     | Result                                                                                                                                                                                                                                    |
-| ------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| No `Idempotency-Key` header                                   | `400 idempotency-key-missing`. Nothing is created                                                                                                                                                                                         |
-| A key that breaks the key rules (section 4.2)                 | `400 idempotency-key-invalid`. Nothing is created                                                                                                                                                                                         |
-| A key not used before by this student for this lab            | the checks go on; if they pass, `202` and a new submission                                                                                                                                                                                |
-| Same key, same body, within 24 hours                          | the stored response: `202`, the identical body (the original `id`, `receivedAt`, and `status: "queued"`, even if judging has moved on), the same `Location`, plus `Idempotent-Replayed: true`. No new submission. Also after the deadline |
-| Same key, different body, within 24 hours                     | `422 idempotency-key-reused`. Nothing is created                                                                                                                                                                                          |
-| Same key, more than 24 hours after it was stored              | treated as a new key: a new submission if the lab is still open                                                                                                                                                                           |
-| Same key, from another student or for another lab             | unrelated to this key: treated as a new key                                                                                                                                                                                               |
-| Two requests with the same key at the same moment             | exactly one submission is created. The other request gets the replay if its body is the same, or `422 idempotency-key-reused` if it differs                                                                                               |
-| The first request with the key ended in an error (4xx or 500) | nothing was stored, so the key is free. A retry after the deadline gets `409 lab-closed`: only a stored 202 survives the deadline                                                                                                         |
+| Situation                                                                    | Result                                                                                                                                                                                                                                    |
+| ---------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| No `Idempotency-Key` header                                                  | `400 idempotency-key-missing`. Nothing is created                                                                                                                                                                                         |
+| A key that breaks the key rules (section 4.2)                                | `400 idempotency-key-invalid`. Nothing is created                                                                                                                                                                                         |
+| A key not used before by this student for this lab                           | the checks go on; if they pass, `202` and a new submission                                                                                                                                                                                |
+| Same key, same body, less than 24 hours after the original `receivedAt`      | the stored response: `202`, the identical body (the original `id`, `receivedAt`, and `status: "queued"`, even if judging has moved on), the same `Location`, plus `Idempotent-Replayed: true`. No new submission. Also after the deadline |
+| Same key, different body, less than 24 hours after the original `receivedAt` | `422 idempotency-key-reused`. Nothing is created                                                                                                                                                                                          |
+| Same key, 24 hours or more after the original `receivedAt`                   | treated as a new key: a new submission if the lab is still open                                                                                                                                                                           |
+| Same key, from another student or for another lab                            | unrelated to this key: treated as a new key                                                                                                                                                                                               |
+| Two requests with the same key at the same moment                            | exactly one submission is created. The other request gets the replay if its body is the same, or `422 idempotency-key-reused` if it differs                                                                                               |
+| The first request with the key ended in an error (4xx or 500)                | nothing was stored, so the key is free. A retry after the deadline gets `409 lab-closed`: only a stored 202 survives the deadline                                                                                                         |
 
 ### 4.6 Resubmission and the deadline
 
 - Before the deadline a student may submit as many times as they like. Each request with a new key creates a new submission. The last submission received before the deadline is the one that counts, whatever its result. Theo FAQ-02: https://github.com/tkob-team/LeeTKOB-FAQ/blob/main/FAQ.md#faq-02
-- The window is judged by the time the server receives the request (`receivedAt`), not by when judging finishes. The lab accepts a request received at or after the moment it opens and before its deadline. A submission received before the deadline but still waiting in the queue is valid. Theo FAQ-03: https://github.com/tkob-team/LeeTKOB-FAQ/blob/main/FAQ.md#faq-03
+- The window is judged by `receivedAt`, the time the server receives the request truncated to milliseconds (section 3), not by when judging finishes. The lab accepts a request whose `receivedAt` is at or after the moment it opens and before its deadline. A submission received before the deadline but still waiting in the queue is valid. Theo FAQ-03: https://github.com/tkob-team/LeeTKOB-FAQ/blob/main/FAQ.md#faq-03
 - There is no late submission and no per-student extension: after the deadline every new submission gets `409 lab-closed`. Theo FAQ-03: https://github.com/tkob-team/LeeTKOB-FAQ/blob/main/FAQ.md#faq-03
 
 ### 4.7 When queueing fails
