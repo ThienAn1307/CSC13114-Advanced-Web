@@ -16,15 +16,16 @@ npm ci
 
 ## Checks
 
-Each check is one command. CI runs exactly these commands.
+Each check is one command, and each also runs locally. CI ([`.github/workflows/ci.yml`](.github/workflows/ci.yml), job `gates`) runs `npm ci`, then `npm run check`, then `npm audit --audit-level=high`.
 
-| Check        | Command                | Tool                                      |
-| ------------ | ---------------------- | ----------------------------------------- |
-| Lint         | `npm run lint`         | ESLint with typescript-eslint, 0 warnings |
-| Format check | `npm run format:check` | Prettier (`npm run format` fixes)         |
-| Type check   | `npm run typecheck`    | `tsc` in every workspace                  |
-| Tests        | `npm test`             | Vitest over every workspace               |
-| All four     | `npm run check`        | The same four, in that order              |
+| Check            | Command                        | Tool                                                       |
+| ---------------- | ------------------------------ | ---------------------------------------------------------- |
+| Lint             | `npm run lint`                 | ESLint with typescript-eslint, 0 warnings                  |
+| Format check     | `npm run format:check`         | Prettier (`npm run format` fixes)                          |
+| Type check       | `npm run typecheck`            | `tsc` in every workspace                                   |
+| Tests            | `npm test`                     | Vitest over every workspace                                |
+| All four         | `npm run check`                | The same four, in that order                               |
+| Dependency audit | `npm audit --audit-level=high` | npm; fails on a high or critical advisory (also run by CI) |
 
 ## Layout
 
