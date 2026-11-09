@@ -4,6 +4,6 @@ import { defineConfig } from 'vitest/config';
 // (for example apps/api with SWC for NestJS decorators) adds a vitest.config.ts in its folder.
 export default defineConfig({
   test: {
-    projects: ['packages/*', 'apps/*'],
+    projects: ['packages/*', 'apps/*', 'tests/*'],
   },
 });
