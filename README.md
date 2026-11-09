@@ -39,3 +39,11 @@ npm workspaces (decisions.md, D2):
 | `apps/web`        | React app (added in PA#3)                    |
 
 A new workspace must have a `typecheck` script (`npm run typecheck` fails without one) and its own tests.
+
+## Model, spending and secrets
+
+- The constraint checker will use Gemini Flash-Lite on the **free tier**, with a key created on a Google project that has **no billing account attached**, so the key cannot be charged: the spending limit is 0 (decisions.md D8). No model is called in PA#2, and no key exists in this repository or its history.
+- From PA#3 our own limits are enforced in code: a maximum number of model calls per lab, and a request rate below the free-tier limit. Over either limit, the remaining pairs become `unsure`. Theo FAQ-09: https://github.com/tkob-team/LeeTKOB-FAQ/blob/main/FAQ.md#faq-09
+- Only the lab statement, its constraints, and the code with comments, names and student IDs removed will leave our system. On the free tier Google's reviewers may read API input and output ([Gemini API terms](https://aistudio.google.com/docs/terms)), so nothing identifying is sent.
+- Keys live only in `.env`, which git ignores. [`.env.example`](.env.example) lists every variable, with no values. The judge sandbox never gets a key.
+- The exact model id and the free-tier rate limits are written here before PA#3 (decisions.md D8).
