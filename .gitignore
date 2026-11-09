@@ -1,0 +1,19 @@
+# secrets
+.env
+.env.*
+!.env.example
+
+# dependencies and build output
+node_modules/
+dist/
+coverage/
+
+# OS and editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# course documents from Classroom: kept local only (lecturer material, grading rubric)
+# see docs/sources.md for where each one lives
+docs/course/
