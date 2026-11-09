@@ -37,7 +37,7 @@ npm workspaces: `apps/api` (HTTP), `apps/worker` (judge and checker, consumes th
 
 ## D5. Who is calling (PA#2)
 
-- The API verifies `Authorization: Bearer <JWT>` (user id and role) with a Passport JWT guard. There is no login endpoint yet; contract tests sign tokens with a test-only secret from `.env.example`.
+- The API verifies `Authorization: Bearer <JWT>` (user id and role) with a Passport JWT guard. There is no login endpoint yet; contract tests sign tokens with their own test-only secret, set in the test setup; `.env.example` lists `JWT_SECRET` with no value.
 - No token or a bad token: 401.
 - The **role check runs first**: anyone who is not a student gets 403 `forbidden-role` for any `labId`, so the response says nothing about which labs exist.
 - A student who is not a member of the lab's class gets 404 `lab-not-found`, the same as for a lab that does not exist (FAQ-01: students see only their own class's labs).
