@@ -6,8 +6,8 @@ Rules for every assistant, and every person, working in this repo. A line is add
 
 TypeScript, strict, ES modules, in npm workspaces (D1, D2). NestJS 12, PostgreSQL 16 with Drizzle, BullMQ on Redis, Vitest with `unplugin-swc` (D3). Model: Gemini Flash-Lite, free tier (D8). Nothing else without asking.
 
-- Tests use Vitest. Do not add Jest. [Jest could not load NestJS 12, which ships only as ES modules, without an experimental Node flag; D3. See AI-LOG.md, 2026-11-09.]
-- Keep `typescript` at `~6.0` until typescript-eslint supports 7. [TypeScript 7.0 is out, but typescript-eslint 8.72 accepts only `<6.1.0`, so installing the latest breaks lint. See AI-LOG.md, 2026-11-09.]
+- Tests use Vitest. Do not add Jest. [Jest could not load NestJS 12, which ships only as ES modules, without an experimental Node flag; see decisions.md D3.]
+- Keep `typescript` at `~6.0` until typescript-eslint supports 7. [TypeScript 7.0 is out, but typescript-eslint 8.72 accepts only `<6.1.0`, so installing the latest breaks lint; see the pin in package.json, commit 153240b.]
 
 ## Commands
 
@@ -21,7 +21,7 @@ TypeScript, strict, ES modules, in npm workspaces (D1, D2). NestJS 12, PostgreSQ
 | Format the files you changed | `npx prettier --write <files you changed>` |
 
 - Run `npm run check` before every commit. CI (`.github/workflows/ci.yml`, job `gates`) runs the same command.
-- Format only the files you changed, never `npm run format`. [An instruction to run `npm run format`, a repo-wide write, could have rewritten files outside the task. See AI-LOG.md, 2026-11-09.]
+- Format only the files you changed, never `npm run format`.
 
 ## Conventions
 
@@ -46,5 +46,5 @@ TypeScript, strict, ES modules, in npm workspaces (D1, D2). NestJS 12, PostgreSQ
 - Call the real model in unit tests. Use a fake.
 - Edit a test, the eval data, a label or the contract to make a check pass. Fix the code, or ask.
 - Lower `--audit-level`, turn off a lint rule or raise `--max-warnings` to get green.
-- Run `npm audit fix --force`. [It would downgrade ESLint to 9.39.5 and break our config. See AI-LOG.md, 2026-11-09.]
-- Pipe a check's output into another command in CI or in a script used as evidence. If you must, set `shell: bash`, which adds `pipefail`. [A check loop piped each command into `tail` and reported exit 0 for a format check that had failed; GitHub Actions runs steps with `bash -e`, without `pipefail`. See AI-LOG.md, 2026-11-09.]
+- Run `npm audit fix --force`. [It would downgrade ESLint to 9.39.5 and break our config; see the npm audit step of PR #1's CI run: https://github.com/ThienAn1307/CSC13114-Advanced-Web/actions/runs/42584766846]
+- Pipe a check's output into another command in CI or in a script used as evidence. If you must, set `shell: bash`, which adds `pipefail`. [GitHub Actions runs our steps as `bash -e {0}`, without `pipefail`, so a failing command before a pipe still passes; see PR #1's CI run: https://github.com/ThienAn1307/CSC13114-Advanced-Web/actions/runs/42584766846]
