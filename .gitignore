@@ -17,3 +17,6 @@ Thumbs.db
 # course documents from Classroom: kept local only (lecturer material, grading rubric)
 # see docs/sources.md for where each one lives
 docs/course/
+
+# private notes shared with the team by message, not committed
+notes/
