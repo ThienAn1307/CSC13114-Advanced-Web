@@ -1,0 +1,7 @@
+# Nobody, person or assistant, weakens the gate without review (decisions.md D9).
+/.github/          @ThienAn1307 @hoanghaitapcode @d1nhnguyen
+/docs/contract/    @ThienAn1307 @hoanghaitapcode @d1nhnguyen
+/docs/decisions.md @ThienAn1307 @hoanghaitapcode @d1nhnguyen
+**/test/           @ThienAn1307 @hoanghaitapcode @d1nhnguyen
+**/*.test.ts       @ThienAn1307 @hoanghaitapcode @d1nhnguyen
+/eval/             @ThienAn1307 @hoanghaitapcode @d1nhnguyen
