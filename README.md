@@ -27,6 +27,8 @@ Each check is one command, and each also runs locally. CI ([`.github/workflows/c
 | All four         | `npm run check`                | The same four, in that order                               |
 | Dependency audit | `npm audit --audit-level=high` | npm; fails on a high or critical advisory (also run by CI) |
 
+Tests that need the database read `DATABASE_URL`: CI provides PostgreSQL 16 as a service, and locally you set `DATABASE_URL` in `.env` to a local PostgreSQL 16 (Phú Dinh's `docker compose` will provide one). A database test that finds no `DATABASE_URL` fails; it never skips, because a skipped test keeps the gate green on a broken build.
+
 ## Layout
 
 npm workspaces (decisions.md, D2):
