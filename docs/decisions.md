@@ -21,7 +21,6 @@ npm workspaces: `apps/api` (HTTP), `apps/worker` (judge and checker, consumes th
 
 ## D3. NestJS 12, PostgreSQL 16, Drizzle, BullMQ on Redis, Vitest
 
-
 | Part           | Choice                                                         | Why                                                                                                                                                                                                            |
 | -------------- | -------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | HTTP framework | NestJS 12, request validation with `class-validator` DTOs      | A team member has built a NestJS app; guards fit the role and ownership checks. NestJS 12 keeps `class-validator` "fully supported" ([v12 release notes](https://github.com/nestjs/nest/releases/tag/v12.0.0)) |
@@ -29,7 +28,6 @@ npm workspaces: `apps/api` (HTTP), `apps/worker` (judge and checker, consumes th
 | Query layer    | Drizzle, SQL migrations committed and reviewed                 | Typed queries that read like SQL; no runtime engine                                                                                                                                                            |
 | Queue          | BullMQ on Redis (`@nestjs/bullmq`)                             | First-party NestJS module; Redis is reused for real-time results in PA#5                                                                                                                                       |
 | Tests          | Vitest with `unplugin-swc`, one `npm test` over all workspaces | See below                                                                                                                                                                                                      |
-
 
 **Why Vitest, not Jest**: NestJS 12 packages ship only as ES modules. Plain Jest failed to load them ("Must use import to load ES Module"); Jest passed only with `NODE_OPTIONS=--experimental-vm-modules`, an experimental Node flag. The v12 release notes say "Vitest is the default test runner for ESM projects". Vitest 5.1 with `unplugin-swc` (SWC emits the decorator metadata NestJS needs) passed the same NestJS and React tests with no flag.
 
@@ -46,7 +44,6 @@ npm workspaces: `apps/api` (HTTP), `apps/worker` (judge and checker, consumes th
 
 ## D6. Rules of the submission endpoint
 
-
 | Topic             | Rule                                                                                                                                                                                                                                                                                                         | Why                                                                                          |
 | ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------- |
 | Body              | `application/json`, `{ "source": string }`, at most 64 KB counted in UTF-8 bytes                                                                                                                                                                                                                             | FAQ-05 size limit; one shape to validate. The web app reads a `.cpp` file and sends its text |
@@ -58,7 +55,6 @@ npm workspaces: `apps/api` (HTTP), `apps/worker` (judge and checker, consumes th
 | Enqueue fails     | The submission is saved as `queued` and the student still gets 202. A worker sweep re-enqueues rows still `queued` after a set delay                                                                                                                                                                         | A submission received on time must not be lost, or turn into `lab-closed` on retry           |
 | Errors            | Every error is RFC 9457 `application/problem+json`; clients branch on `type`                                                                                                                                                                                                                                 | Criterion 5                                                                                  |
 | Versioning        | `/v1` in the path. Inside v1 only additive changes; clients ignore fields they do not know. A breaking change becomes `/v2`, and v1 keeps its behaviour until a Sunset date                                                                                                                                  | Criterion 5: what happens when it changes                                                    |
-
 
 The full contract goes in `docs/contract/post-lab-submissions.md`.
 
@@ -89,24 +85,22 @@ Team rule: wherever we choose a model or AI service, we pick the free version.
 
 ## D10. PA#2 split and timeline
 
-
-| Who           | PA#2 scope                                                                                                                                                                                                                                     |
-| ------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Who           | PA#2 scope                                                                                                                                                                                                                                                                                                   |
+| ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | Thiên Ân      | The contract; the contract tests, written from the contract only, not from the endpoint's code; workspaces, the four check commands, CI, `AGENTS.md` and permissions, `.env.example`, branch protection, `CODEOWNERS`; the blocked-PR and contract-break demos; `PA2.md`, AI-LOG, self-assessment, packaging |
-| Hoàng Hải (X) | NestJS skeleton (modules, config validated at startup); the global `problem+json` exception filter, including validation errors with `errors[]`; the JWT guard and role check; the endpoint (controller, DTO, service) on top of Y's data functions |
-| Phú Dinh (Y)  | Postgres in `docker compose`; Drizzle schema and migrations for `users`, `classes`, `class_members`, `labs`, `submissions` and idempotency keys; a seed script; the data functions the endpoint needs, with their own unit tests                |
+| Hoàng Hải (X) | NestJS skeleton (modules, config validated at startup); the global `problem+json` exception filter, including validation errors with `errors[]`; the JWT guard and role check; the endpoint (controller, DTO, service) on top of Y's data functions                                                          |
+| Phú Dinh (Y)  | Postgres in `docker compose`; Drizzle schema and migrations for `users`, `classes`, `class_members`, `labs`, `submissions` and idempotency keys; a seed script; the data functions the endpoint needs, with their own unit tests                                                                             |
 
 **Data functions (Phú Dinh builds, Hoàng Hải calls):** find a lab for a student, returning nothing when the lab does not exist or the student is not in its class (the single query behind the 404 rule in D5); look up an idempotency key by (student, lab, key); insert a submission and its idempotency key in one transaction; list submissions not yet enqueued (for the outbox sweep in D6).
 Thiên Ân writes the signatures, the order of checks and the test list in an internal contract and sends it to both by message on Monday; they confirm or correct it, so Hoàng Hải can build the endpoint against a fake while Phú Dinh builds the real functions.
 
 **Reviews (D9):** Hoàng Hải and Phú Dinh approve each other's pull requests; either of them approves Thiên Ân's. Each teammate reads the other half before the PA#6 oral.
 
-| When                          | Thiên Ân                                                                                          | Hoàng Hải (X)                                              | Phú Dinh (Y)                                                      |
-| ----------------------------- | ------------------------------------------------------------------------------------------------- | ---------------------------------------------------------- | ----------------------------------------------------------------- |
-| Mon 9/11 to Tue 10/11 morning | Workspaces, check commands, CI, `AGENTS.md`; contract draft, review, **frozen by Tue 10/11 noon** | Skeleton, filter, guard; confirm the data contract       | Compose, schema, migrations, seed; confirm the data contract       |
-| Tue 10/11                     | Contract tests; protection on after the first CI run; `CODEOWNERS`; the blocked PR                | The endpoint on the agreed functions                       | The data functions and their unit tests                           |
-| Wed 11/11, by 22:00           | The deliberate contract break; `PA2.md`, AI-LOG, self-assessment, tag `pa2`, zip                  | Fixes                                                      | Fixes                                                             |
-
+| When                          | Thiên Ân                                                                                          | Hoàng Hải (X)                                      | Phú Dinh (Y)                                                 |
+| ----------------------------- | ------------------------------------------------------------------------------------------------- | -------------------------------------------------- | ------------------------------------------------------------ |
+| Mon 9/11 to Tue 10/11 morning | Workspaces, check commands, CI, `AGENTS.md`; contract draft, review, **frozen by Tue 10/11 noon** | Skeleton, filter, guard; confirm the data contract | Compose, schema, migrations, seed; confirm the data contract |
+| Tue 10/11                     | Contract tests; protection on after the first CI run; `CODEOWNERS`; the blocked PR                | The endpoint on the agreed functions               | The data functions and their unit tests                      |
+| Wed 11/11, by 22:00           | The deliberate contract break; `PA2.md`, AI-LOG, self-assessment, tag `pa2`, zip                  | Fixes                                              | Fixes                                                        |
 
 ## Out of scope for PA#2
 

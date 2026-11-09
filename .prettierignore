@@ -1,0 +1,5 @@
+package-lock.json
+docs/course/
+notes/
+**/dist/
+**/coverage/
