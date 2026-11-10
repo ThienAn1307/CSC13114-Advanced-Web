@@ -5,6 +5,7 @@ CSC13114 Advanced Web Application Development, HCMUS, team 23120018-23120031-231
 
 - What we build against: [`docs/sources.md`](docs/sources.md) (class brief, then the product owners' FAQ)
 - Why the stack and the rules look the way they do: [`docs/decisions.md`](docs/decisions.md)
+- Member X's API, DTOs and integration interface for Y: [`docs/member-x-handoff.md`](docs/member-x-handoff.md)
 
 ## Setup
 
