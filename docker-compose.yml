@@ -1,0 +1,22 @@
+# Local PostgreSQL 16 for development and database tests (decisions.md D3, D10).
+# Same image and digest as the `gates` job in .github/workflows/ci.yml, so local and CI run the same server.
+# Trust auth and no password, like CI: the port is bound to 127.0.0.1 only, so nothing outside this machine reaches it.
+# Matching .env line: DATABASE_URL=postgresql://postgres@localhost:5432/leetkob
+services:
+  postgres:
+    image: postgres:16.15-alpine@sha256:aa6cb33cf4c19c765cefcf48d96176258800870a9a1e930ad126200f9d825139
+    environment:
+      POSTGRES_DB: leetkob
+      POSTGRES_HOST_AUTH_METHOD: trust
+    ports:
+      - '127.0.0.1:5432:5432'
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD', 'pg_isready', '-U', 'postgres']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  pgdata:

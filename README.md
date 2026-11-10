@@ -27,7 +27,18 @@ Each check is one command, and each also runs locally. CI ([`.github/workflows/c
 | All four         | `npm run check`                | The same four, in that order                               |
 | Dependency audit | `npm audit --audit-level=high` | npm; fails on a high or critical advisory (also run by CI) |
 
-Tests that need the database read `DATABASE_URL`: CI provides PostgreSQL 16 as a service, and locally you set `DATABASE_URL` in `.env` to a local PostgreSQL 16 (Phú Dinh's `docker compose` will provide one). A database test that finds no `DATABASE_URL` fails; it never skips, because a skipped test keeps the gate green on a broken build.
+Tests that need the database read `DATABASE_URL`: CI provides PostgreSQL 16 as a service, and locally you set `DATABASE_URL` in `.env` to the PostgreSQL 16 started by `docker compose` (next section). A database test that finds no `DATABASE_URL` fails; it never skips, because a skipped test keeps the gate green on a broken build. Each test file creates its own throwaway database next to the one in `DATABASE_URL`, migrates it from zero and drops it afterwards, so tests never touch your dev data.
+
+## Local database
+
+```bash
+docker compose up -d --wait                  # PostgreSQL 16, same image as CI, on 127.0.0.1:5432
+# in .env: DATABASE_URL=postgresql://postgres@localhost:5432/leetkob
+npm run migrate --workspace @leetkob/db      # apply the committed SQL migrations
+npm run seed --workspace @leetkob/db         # fixed users, classes and labs (packages/db/src/seed.ts)
+```
+
+After changing `packages/db/src/schema.ts`, run `npm run generate --workspace @leetkob/db` and commit the new file in `packages/db/drizzle/`. The seed is safe to run again; it moves the lab windows to the current time, so the open lab stays open.
 
 ## Layout
 
@@ -36,6 +47,7 @@ npm workspaces (decisions.md, D2):
 | Folder            | What it is                                   |
 | ----------------- | -------------------------------------------- |
 | `packages/shared` | Code shared by the API and the worker        |
+| `packages/db`     | Drizzle schema, migrations, seed, data layer |
 | `apps/api`        | NestJS HTTP API (added in PA#2)              |
 | `apps/worker`     | Judge and constraint checker (added in PA#3) |
 | `apps/web`        | React app (added in PA#3)                    |
