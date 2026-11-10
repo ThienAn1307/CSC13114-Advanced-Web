@@ -13,7 +13,9 @@ export interface DbHandle {
 export function createDb(databaseUrl: string): DbHandle {
   const pool = new pg.Pool({ connectionString: databaseUrl });
   const db = drizzle(pool, { schema });
-  return { db, pool, close: () => pool.end() };
+  // Safe to call more than once: Nest's shutdown hook and a test teardown may both close it.
+  let closing: Promise<void> | undefined;
+  return { db, pool, close: () => (closing ??= pool.end()) };
 }
 
 /** Reads DATABASE_URL and fails loudly without echoing any value. */

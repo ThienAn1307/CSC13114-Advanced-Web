@@ -1,4 +1,6 @@
 import { randomBytes } from 'node:crypto';
+import { existsSync, readFileSync } from 'node:fs';
+import { parseEnv } from 'node:util';
 import pg from 'pg';
 import { createDb, requireDatabaseUrl } from '../src/client.js';
 import type { DbHandle } from '../src/client.js';
@@ -9,11 +11,22 @@ export interface TestDatabase extends DbHandle {
 }
 
 /**
+ * CI sets DATABASE_URL; locally it comes from the repo's .env (README, Checks).
+ * A value already in the environment wins, and nothing but DATABASE_URL is taken from the file.
+ */
+function databaseUrlForTests(): string | undefined {
+  if (process.env.DATABASE_URL) return process.env.DATABASE_URL;
+  const file = new URL('../../../.env', import.meta.url);
+  if (!existsSync(file)) return undefined;
+  return parseEnv(readFileSync(file, 'utf8')).DATABASE_URL;
+}
+
+/**
  * A fresh database per test file, created next to DATABASE_URL's and migrated from zero.
  * No DATABASE_URL means the file fails; it never skips (README, Checks).
  */
 export async function createTestDatabase(): Promise<TestDatabase> {
-  const baseUrl = requireDatabaseUrl();
+  const baseUrl = requireDatabaseUrl({ DATABASE_URL: databaseUrlForTests() });
   const name = `leetkob_test_${randomBytes(6).toString('hex')}`;
   const admin = new pg.Client({ connectionString: baseUrl });
   await admin.connect();
