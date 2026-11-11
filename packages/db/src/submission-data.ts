@@ -131,7 +131,13 @@ export class DrizzleSubmissionData {
   async insertSubmission(input: InsertSubmission): Promise<InsertResult> {
     const receivedAt = new Date(input.receipt.receivedAt);
     return this.db.transaction(async (tx) => {
-      const scopeText = JSON.stringify([input.studentId, input.labId, input.key]);
+      // UUIDs compare case-insensitively (contract, section 4.2), so the lock key uses lower case;
+      // the Idempotency-Key itself is compared exactly, case included.
+      const scopeText = JSON.stringify([
+        input.studentId.toLowerCase(),
+        input.labId.toLowerCase(),
+        input.key,
+      ]);
       await tx.execute(sql`select pg_advisory_xact_lock(hashtextextended(${scopeText}, 0))`);
 
       const existing = await tx
