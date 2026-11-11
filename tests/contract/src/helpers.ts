@@ -1,6 +1,7 @@
 /**
  * Request builders and assertions taken from docs/contract/post-lab-submissions.md.
- * Every request body is sent as a Buffer, so supertest never adds or changes a Content-Type.
+ * Every request body is a Buffer sent byte-for-byte: `submit()` turns off superagent's serializer,
+ * which would otherwise JSON-encode a Buffer sent as application/json ({"type":"Buffer",...}).
  */
 import { randomUUID } from 'node:crypto';
 import { SignJWT } from 'jose';
@@ -75,6 +76,12 @@ export function useHarness(): () => Harness {
     return current;
   };
 }
+
+/**
+ * superagent's serializer, replaced so the Buffer goes on the wire unchanged (its Node code sends a
+ * Buffer as is and sets Content-Length from its byte length). The type says string; a Buffer works.
+ */
+const sendBytesUnchanged = ((body: Buffer) => body) as unknown as (body: unknown) => string;
 
 export function json(value: unknown): Buffer {
   return Buffer.from(JSON.stringify(value), 'utf8');
@@ -161,7 +168,7 @@ export async function submit(h: Harness, options: SubmitOptions): Promise<Respon
   if (authorization !== null) req = req.set('Authorization', authorization);
   if (key !== null) req = req.set('Idempotency-Key', key);
   if (contentType !== null) req = req.set('Content-Type', contentType);
-  return req.send(options.body ?? json({ source: SOURCE }));
+  return req.serialize(sendBytesUnchanged).send(options.body ?? json({ source: SOURCE }));
 }
 
 export function bearer(token: string): string {
