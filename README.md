@@ -41,6 +41,15 @@ npm run seed --workspace @leetkob/db         # fixed users, classes and labs (pa
 
 After changing `packages/db/src/schema.ts`, run `npm run generate --workspace @leetkob/db` and commit the new file in `packages/db/drizzle/`. The seed is safe to run again; it moves the lab windows to the current time, so the open lab stays open.
 
+## Run the API
+
+```bash
+npm run build --workspace @leetkob/api
+npm start --workspace @leetkob/api           # reads DATABASE_URL, JWT_SECRET and PORT from .env
+```
+
+`POST /v1/labs/{labId}/submissions` is specified in [`docs/contract/post-lab-submissions.md`](docs/contract/post-lab-submissions.md). There is no login endpoint in PA#2: sign an HS256 token with `JWT_SECRET`, `sub` set to a seeded user id (`packages/db/src/seed.ts`), `role` set to `student` and `exp` set to a future expiry time in seconds since the Unix epoch (contract, section 1). Nothing consumes the queue in PA#2; submissions stay `queued` in the database until the worker arrives in PA#3.
+
 ## Layout
 
 npm workspaces (decisions.md, D2):
