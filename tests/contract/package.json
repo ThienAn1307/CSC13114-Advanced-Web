@@ -1,0 +1,16 @@
+{
+  "name": "@leetkob/contract-tests",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "devDependencies": {
+    "@leetkob/api": "*",
+    "@leetkob/db": "*",
+    "@types/supertest": "^7.2.1",
+    "jose": "^6.2.13",
+    "supertest": "^7.3.1"
+  }
+}
