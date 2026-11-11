@@ -6,7 +6,9 @@ export interface ApiConfig {
 /** Reads only the supplied environment; invalid values are never echoed. */
 export function validateConfig(env: NodeJS.ProcessEnv): ApiConfig {
   if (!env.JWT_SECRET?.trim()) throw new Error('JWT_SECRET is required.');
-  const port = env.PORT === undefined ? 3000 : Number(env.PORT);
+  // A blank PORT (`.env.example` ships `PORT=`) means unset, so the default applies.
+  const rawPort = env.PORT?.trim();
+  const port = rawPort ? Number(rawPort) : 3000;
   if (!Number.isInteger(port) || port < 1 || port > 65535) {
     throw new Error('PORT must be an integer between 1 and 65535.');
   }
