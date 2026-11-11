@@ -40,16 +40,16 @@ export class SubmissionsService {
     const lab = await this.data.findLabForStudent(studentId, labId);
     // Theo FAQ-01: https://github.com/tkob-team/LeeTKOB-FAQ/blob/main/FAQ.md#faq-01
     if (!lab) throw new Problem('lab-not-found', 'The lab was not found.');
+    // Theo FAQ-03: https://github.com/tkob-team/LeeTKOB-FAQ/blob/main/FAQ.md#faq-03
+    if (receivedAt < lab.opensAt) throw new Problem('lab-not-open', 'The lab is not open yet.');
+    if (receivedAt >= lab.deadlineAt)
+      throw new Problem('lab-closed', 'The lab deadline has passed.');
     const scope = { studentId, labId, key };
     // Hash exactly the validated source's UTF-8 bytes, without normalization.
     const requestHash = createHash('sha256').update(source, 'utf8').digest('hex');
     const stored = await this.data.findIdempotencyKey(scope);
     if (stored && stored.expiresAt.getTime() > receivedAt.getTime())
       return this.replay(stored, requestHash);
-    // Theo FAQ-03: https://github.com/tkob-team/LeeTKOB-FAQ/blob/main/FAQ.md#faq-03
-    if (receivedAt < lab.opensAt) throw new Problem('lab-not-open', 'The lab is not open yet.');
-    if (receivedAt >= lab.deadlineAt)
-      throw new Problem('lab-closed', 'The lab deadline has passed.');
     const receipt: SubmissionReceipt = {
       id: randomUUID(),
       labId,
