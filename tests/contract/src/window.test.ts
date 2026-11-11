@@ -69,6 +69,8 @@ describe('sections 4.6 and 4.7: deadline, resubmission, queue failure', () => {
   });
 
   it('4.6: a retry after the deadline with the same key and body replays the original 202', async () => {
+    // The contract's 21:59 / 22:01 case: both requests within 24 hours, so the key has not expired.
+    h().clock.set(new Date(dueAt().getTime() - 60_000));
     const key = newKey();
     const first = await submit(h(), { labId: lab(), key });
     const original = expectAccepted(first, lab());

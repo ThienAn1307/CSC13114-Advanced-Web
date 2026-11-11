@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { describe, it } from 'vitest';
-import { DAY_MS, SEED_WINDOWS } from './hooks.js';
+import { SEED_WINDOWS } from './hooks.js';
 import {
   bearer,
   expectAccepted,
@@ -107,10 +107,13 @@ describe('section 4.4: order of checks', () => {
   });
 
   it('4.4 steps 9 and 10: a reused key with a different body after the deadline gets 422 idempotency-key-reused, not 409', async () => {
+    // The contract's 21:59 / 22:01 case: both requests within 24 hours, so the key has not expired.
+    const dueAtMs = h().seededAt.getTime() + SEED_WINDOWS.openLabDueAfterMs;
+    h().clock.set(new Date(dueAtMs - 60_000));
     const key = newKey();
     const first = await submit(h(), { labId: lab(), key, body: json({ source: 'int main() {}' }) });
     expectAccepted(first, lab());
-    h().clock.set(new Date(h().seededAt.getTime() + SEED_WINDOWS.openLabDueAfterMs + DAY_MS));
+    h().clock.set(new Date(dueAtMs + 60_000));
     const res = await submit(h(), { labId: lab(), key, body: json({ source: 'int main() { }' }) });
     expectProblem(res, 'idempotency-key-reused');
   });
