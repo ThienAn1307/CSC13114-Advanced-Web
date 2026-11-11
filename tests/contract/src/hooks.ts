@@ -1,59 +1,65 @@
 /**
  * The only file that knows how the API and the test database are built.
- * When Hoàng Hải's app and Phú Dinh's data code land, only this file changes.
  *
- * Proposed hooks, NOT yet confirmed by the teammates (notes/questions.md, U4b):
- * - Hoàng Hải: `createApp({ queue, clock })` exported by `@leetkob/api`. It returns a NestJS app
- *   that is initialised but not listening; the tests drive `app.getHttpServer()` with supertest.
- *   `clock` replaces "now" everywhere the contract says "the time the server receives the request".
- * - Phú Dinh: `migrate(databaseUrl)`, `resetAndSeed(databaseUrl, now)` and `SEED` (fixed ids),
- *   also exported by `@leetkob/api` (location to confirm).
+ * Wiring (PR #5, #6, #7):
+ * - the app is Hoàng Hải's `createApp({ config, data, queue })` from apps/api, already initialised
+ *   and not listening; the tests drive `app.getHttpServer()` with supertest;
+ * - `data` is the real PostgreSQL implementation, `PostgresSubmissionData`, over Phú Dinh's
+ *   `createDb`, exactly as apps/api/src/server.ts composes it;
+ * - `queue` is a recording fake, so the tests can see what was enqueued and make it fail (4.7);
+ * - "now" is Vitest's fake `Date` (only `Date` is faked: pg, supertest and timeouts keep real
+ *   timers). The app stamps `receivedAt` with `new Date()` and the JWT `exp` check reads
+ *   `Date.now()`, so both follow the test clock.
  */
 import type { Server } from 'node:http';
+import { vi } from 'vitest';
+import { createDb, runMigrations, schema, seed, SEED as DB_SEED } from '@leetkob/db';
+import type { DbHandle } from '@leetkob/db';
+import { createApp } from '@leetkob/api/src/app.js';
+import { PostgresSubmissionData } from '@leetkob/api/src/postgres-submission-data.js';
+import type { SubmissionQueue } from '@leetkob/api/src/submissions/submission-data.js';
 
 export const HOUR_MS = 60 * 60 * 1000;
 export const DAY_MS = 24 * HOUR_MS;
 
-/** The queue the endpoint puts a new submission on (decisions.md D6). */
-export interface SubmissionQueue {
-  enqueue(submissionId: string): Promise<void>;
-}
-
-/** The part of a NestJS `INestApplication` the tests use. */
-interface ApiApp {
-  getHttpServer(): Server;
-  close(): Promise<void>;
-}
-
-/** Fixed ids from Phú Dinh's seed. The names are assumed; see notes/questions.md, U4b. */
+/** The tests' names for Phú Dinh's seed ids (packages/db/src/seed.ts). */
 export interface SeedIds {
   users: { stu1: string; stu2: string; stu3: string; ta_a: string; admin: string };
   labs: { class1Open: string; class1NotOpen: string; class1Closed: string; class2Open: string };
 }
 
-interface ApiModule {
-  createApp(options?: { queue?: SubmissionQueue; clock?: () => Date }): Promise<ApiApp>;
-  migrate(databaseUrl: string): Promise<void>;
-  resetAndSeed(databaseUrl: string, now?: Date): Promise<void>;
-  SEED: SeedIds;
-}
+const SEED_IDS: SeedIds = {
+  users: {
+    stu1: DB_SEED.users.student,
+    stu2: DB_SEED.users.classmate,
+    stu3: DB_SEED.users.otherStudent,
+    ta_a: DB_SEED.users.ta,
+    admin: DB_SEED.users.admin,
+  },
+  labs: {
+    class1Open: DB_SEED.labs.open,
+    class1NotOpen: DB_SEED.labs.notOpen,
+    class1Closed: DB_SEED.labs.closed,
+    class2Open: DB_SEED.labs.otherClass,
+  },
+};
 
 /**
- * Assumed seed windows, relative to the `now` passed to `resetAndSeed`:
- * class1Open and class2Open opened 1 day before `now` and close 7 days after it;
- * class1NotOpen opens 1 day after `now`; class1Closed closed 1 day before `now`.
- * The open lab must stay open for more than 24 hours so the key-expiry test can run.
+ * The seed's windows, relative to the `now` passed to `seed`: open labs (class 1 and class 2)
+ * opened 1 day before `now` and close 7 days after it; the not-open lab opens 1 day after `now`;
+ * the closed lab closed 1 day before `now`. The open lab stays open for more than 24 hours,
+ * which the key-expiry tests need.
  */
 export const SEED_WINDOWS = {
   openLabOpenedBeforeMs: DAY_MS,
   openLabDueAfterMs: 7 * DAY_MS,
 } as const;
 
-let apiModule: Promise<ApiModule> | undefined;
-
-function loadApi(): Promise<ApiModule> {
-  apiModule ??= import('@leetkob/api') as Promise<ApiModule>;
-  return apiModule;
+/** Test-only signing secret, set by vitest.config.ts; never read from .env. */
+function jwtSecret(): string {
+  const secret = process.env.JWT_SECRET;
+  if (!secret) throw new Error('JWT_SECRET is not set by tests/contract/vitest.config.ts');
+  return secret;
 }
 
 export function databaseUrl(): string {
@@ -67,28 +73,33 @@ export function databaseUrl(): string {
 }
 
 export async function migrateDatabase(): Promise<void> {
-  const api = await loadApi();
-  await api.migrate(databaseUrl());
+  const handle = createDb(databaseUrl());
+  try {
+    await runMigrations(handle.db);
+  } finally {
+    await handle.close();
+  }
 }
 
-/** "Now" as the server sees it. Tests move it to reach a deadline or a key's 24-hour expiry. */
+/** Empties what earlier tests wrote, then writes the seed around `now`. */
+async function resetAndSeed(handle: DbHandle, now: Date): Promise<void> {
+  await handle.db.delete(schema.idempotencyKeys);
+  await handle.db.delete(schema.submissions);
+  await seed(handle.db, now);
+}
+
+/** "Now" as the server sees it: Vitest's fake `Date`, which stands still until a test moves it. */
 export class TestClock {
-  private current: number;
-
-  constructor(start: Date) {
-    this.current = start.getTime();
-  }
-
   now(): Date {
-    return new Date(this.current);
+    return new Date();
   }
 
   set(at: Date): void {
-    this.current = at.getTime();
+    vi.setSystemTime(at);
   }
 
   advance(ms: number): void {
-    this.current += ms;
+    vi.setSystemTime(Date.now() + ms);
   }
 }
 
@@ -113,20 +124,38 @@ export interface Harness {
   close(): Promise<void>;
 }
 
-/** A freshly seeded database and a new app around a test clock and a recording queue. */
+/** A freshly seeded database and a new app around the test clock and a recording queue. */
 export async function startHarness(): Promise<Harness> {
-  const api = await loadApi();
   const seededAt = new Date();
-  await api.resetAndSeed(databaseUrl(), seededAt);
-  const clock = new TestClock(seededAt);
-  const queue = new RecordingQueue();
-  const app = await api.createApp({ queue, clock: () => clock.now() });
-  return {
-    server: app.getHttpServer(),
-    seed: api.SEED,
-    seededAt,
-    clock,
-    queue,
-    close: () => app.close(),
-  };
+  vi.useFakeTimers({ toFake: ['Date'] });
+  vi.setSystemTime(seededAt);
+  const handle = createDb(databaseUrl());
+  try {
+    await resetAndSeed(handle, seededAt);
+    const queue = new RecordingQueue();
+    const app = await createApp({
+      config: { jwtSecret: jwtSecret(), port: 0 },
+      data: new PostgresSubmissionData(handle),
+      queue,
+    });
+    return {
+      server: app.getHttpServer(),
+      seed: SEED_IDS,
+      seededAt,
+      clock: new TestClock(),
+      queue,
+      close: async () => {
+        try {
+          await app.close();
+          await handle.close();
+        } finally {
+          vi.useRealTimers();
+        }
+      },
+    };
+  } catch (error) {
+    await handle.close();
+    vi.useRealTimers();
+    throw error;
+  }
 }

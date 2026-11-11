@@ -1,8 +1,11 @@
+import swc from 'unplugin-swc';
 import { defineConfig } from 'vitest/config';
 
 // Contract tests for POST /v1/labs/{labId}/submissions, written from
 // docs/contract/post-lab-submissions.md only, never from the endpoint's code (decisions.md D10).
 export default defineConfig({
+  // The tests build the NestJS app in-process; SWC emits the decorator metadata Nest needs (D3).
+  plugins: [swc.vite({ jsc: { transform: { decoratorMetadata: true } } })],
   test: {
     name: 'contract',
     environment: 'node',
