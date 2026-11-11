@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { DAY_MS, SEED_WINDOWS } from './hooks.js';
+import { SEED_WINDOWS } from './hooks.js';
 import {
   expectAccepted,
   expectProblem,
@@ -82,10 +82,12 @@ describe('sections 4.6 and 4.7: deadline, resubmission, queue failure', () => {
   });
 
   it('4.6: a retry after the deadline whose first attempt failed gets 409 lab-closed', async () => {
+    // The contract's 21:59 / 22:01 case: both requests within 24 hours, so the key has not expired.
+    h().clock.set(new Date(dueAt().getTime() - 60_000));
     const key = newKey();
     const broken = await submit(h(), { labId: lab(), key, body: json({ source: '' }) });
     expectProblem(broken, 'validation-failed');
-    h().clock.set(new Date(dueAt().getTime() + DAY_MS));
+    h().clock.set(new Date(dueAt().getTime() + 60_000));
     const retry = await submit(h(), { labId: lab(), key });
     expectProblem(retry, 'lab-closed');
   });
