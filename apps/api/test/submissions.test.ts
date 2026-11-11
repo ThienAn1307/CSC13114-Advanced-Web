@@ -332,12 +332,15 @@ describe('startup configuration', () => {
     expect(() => validateConfig({})).toThrow('JWT_SECRET is required.');
     expect(() => validateConfig({ JWT_SECRET: ' ' })).toThrow('JWT_SECRET is required.');
   });
-  it.each(['0', '65536', '3.5', 'invalid', ''])('rejects invalid port %s', (PORT) => {
+  it.each(['0', '65536', '3.5', 'invalid'])('rejects invalid port %s', (PORT) => {
     expect(() => validateConfig({ JWT_SECRET: signingMaterial, PORT })).toThrow(
       'PORT must be an integer',
     );
   });
   it('defaults to port 3000', () => {
     expect(validateConfig({ JWT_SECRET: signingMaterial }).port).toBe(3000);
+  });
+  it.each(['', '   '])('treats a blank PORT %j as unset and defaults to 3000', (PORT) => {
+    expect(validateConfig({ JWT_SECRET: signingMaterial, PORT }).port).toBe(3000);
   });
 });

@@ -9,8 +9,8 @@
   "scripts": {
     "typecheck": "tsc -p tsconfig.json",
     "generate": "drizzle-kit generate",
-    "migrate": "tsx src/migrate-cli.ts",
-    "seed": "tsx src/seed-cli.ts"
+    "migrate": "tsx --env-file-if-exists=../../.env src/migrate-cli.ts",
+    "seed": "tsx --env-file-if-exists=../../.env src/seed-cli.ts"
   },
   "devDependencies": {
     "@types/node": "^24.19.2",

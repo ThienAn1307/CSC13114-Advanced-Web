@@ -195,6 +195,29 @@ describe('insertSubmission', () => {
     expect(await countRows()).toEqual({ submissions: 1, keys: 1 });
   });
 
+  it('takes one lock for one scope whatever the case of the student and lab UUIDs', async () => {
+    const lower = submission({ studentId: U.student, labId: L.open });
+    const upper = submission({ studentId: U.student.toUpperCase(), labId: L.open.toUpperCase() });
+
+    // Same gate as above: both requests must be inside their transactions before either inserts.
+    const gate = await database.pool.connect();
+    let results;
+    try {
+      await gate.query('begin');
+      await gate.query('lock table submissions in exclusive mode');
+      const pending = Promise.all([data.insertSubmission(lower), data.insertSubmission(upper)]);
+      await waitForBlockedBackends(gate, 2);
+      await gate.query('commit');
+      results = await pending;
+    } finally {
+      gate.release();
+    }
+
+    expect(results.filter((r) => r.created)).toHaveLength(1);
+    expect(results[0]?.stored.receipt.id).toBe(results[1]?.stored.receipt.id);
+    expect(await countRows()).toEqual({ submissions: 1, keys: 1 });
+  });
+
   it('rolls back the submission when the key row cannot be written', async () => {
     const input = submission({ requestHash: 'not-a-sha256' });
     await expect(data.insertSubmission(input)).rejects.toThrow();
