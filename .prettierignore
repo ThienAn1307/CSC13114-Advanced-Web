@@ -6,3 +6,4 @@ notes/
 
 # drizzle-kit writes these snapshots itself and rewrites them on every `generate`
 packages/db/drizzle/meta/
+eval/dev/
