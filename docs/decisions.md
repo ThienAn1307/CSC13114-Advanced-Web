@@ -105,3 +105,46 @@ Thiên Ân writes the signatures, the order of checks and the test list in an in
 ## Out of scope for PA#2
 
 A login endpoint; `.cpp` multipart upload; judging, the checker and model calls (contract tests replace the queue with a fake through NestJS dependency injection); Redis in CI; `apps/web`; TA test submissions (checking a TA's sample solution is a separate feature).
+
+## PA#3 decisions
+
+**Status:** proposed by Thiên Ân on 2026-11-21 for the PA#3 kickoff, **to be confirmed by Phú Dinh and Hoàng Hải**. If D11 is accepted, the queue row of D3 and the Stack line of `AGENTS.md` change in the same pull request.
+
+## D11. The queue is a PostgreSQL table (replaces BullMQ in D3)
+
+A submission row is the job. A worker claims the oldest `queued` row with `SELECT ... FOR UPDATE SKIP LOCKED`, marks it `judging` with a lease time and commits. When a lease runs out (the worker died), the row can be claimed again. Verdicts have a unique index on `(submission_id, constraint_id)` and are inserted with `ON CONFLICT DO NOTHING`.
+
+**Why:** the outbox of D6 is already this table. PA#3 criterion 2 asks that a submission made while the worker is stopped is judged exactly once after it starts again; here that is one transaction and one unique index. The deployment runs one service fewer.
+**Cost:** no BullMQ retries or dashboard; we write the claim and the lease ourselves. **Alternative:** keep BullMQ and add Redis to CI and to the deployment.
+
+## D12. Two worker processes: judge and check
+
+One codebase in `apps/worker`, two entrypoints, two services in compose. `judge` can start containers and has no `GEMINI_API_KEY`. `check` has the key and no access to Docker; it runs `packages/checker` on Accepted submissions only (FAQ-04).
+
+**Why:** the process that starts the sandboxes never holds the key, so it cannot pass it on (brief, section 5; session 6: "the worker passes its environment on").
+
+## D13. Hard rules: a C++ tokenizer and rules that know declarations
+
+`packages/checker` splits the code into tokens; comments and string, character and raw-string literals are not code, preprocessor lines are. A constraint whose text starts with "Do not use" or "Do not call" is a ban list, and the banned names are the words in backticks in its text (dev set README). A banned name matches as a qualified name (`std::sort`); as an unqualified name when `using namespace std;` or `using std::sort;` is in effect and the student has not declared a function of that name; as a keyword (`for`, `goto`); or as a member call (`.rbegin()`). A macro or alias that names a banned function is caught at its `#define` or `using` line. No rule names a problem.
+
+**Why:** the traps (the student's own `sort`, a banned name in a comment or a string, `<algorithm>` included only for `std::swap`) must not fire (PA#3 criterion 3). A tokenizer needs no native dependency, and every rule can be explained at the oral. **Alternative:** tree-sitter-cpp (WASM) for a full syntax tree; the rules about names would still be ours.
+
+## D14. One model call per (submission, semantic constraint)
+
+The prompt holds the statement, that one constraint, and the code with comments blanked and the student's identity replaced (D15). The model returns `verdict`, `evidence` (line and text) and `reason`, and nothing else: there is no deduction field. Our code checks the answer against that schema and each evidence line against the code. A failure, or no answer within the time limit, becomes `unsure` with its cause (FAQ-09).
+
+**Why:** a timeout or a schema failure costs one pair, not the whole submission, and the call log has one row per pair (PA#3 criteria 4 and 5).
+
+## D15. Line numbers never move
+
+Comments are replaced by spaces and every newline is kept, so line N of the prompt is line N of the submission. The student's name, email and student id are replaced by placeholders on the same line. Evidence is written with the text of the original line, which `eval.mjs` compares.
+
+## D16. Deployment: one VM from Azure for Students
+
+An Ubuntu VM running `docker compose`, with only the web port open; PostgreSQL is not reachable from outside. Azure for Students gives credit without a card, verified with the school email (to be confirmed at sign-up). It runs from PA#3 until the PA#6 oral; the PA#4 red team attacks it.
+
+**Why:** the judge worker must start containers, which a PaaS does not allow. A laptop behind a tunnel would run strangers' code on our own machine, and would have to stay on until the end of December.
+
+## D17. Sign-in and screens
+
+`POST /v1/auth/login` with email and password. Passwords are hashed with Node's built-in `crypto.scrypt`, so no dependency is added; the token stays HS256 as in D5. The admin creates classes, TAs and students, and puts them in classes (FAQ-01 lets a TA add students; we start with the admin doing it). The web app (D2) is React with Vite: sign-in; admin; the TA's labs, a new lab and the review queue; the student's labs, the submit page and the submission's status. The status page polls every 2 seconds; real-time updates come in PA#5.
