@@ -14,6 +14,14 @@ export interface GeminiOptions {
 
 const ENDPOINT = 'https://generativelanguage.googleapis.com/v1beta/models';
 
+/**
+ * Paid list price in nano-USD per token, which is the same number as USD per 1M tokens times 1000.
+ * Read on Google's pricing page on 2026-11-23. The free tier is billed $0; this is what a call would cost.
+ */
+const NANO_USD_PER_TOKEN: Record<string, { input: number; output: number }> = {
+  'gemini-3.1-flash-lite': { input: 250, output: 1500 },
+};
+
 /** The answer schema (D14), sent so the model answers in JSON; our own check still decides. */
 const ANSWER_SCHEMA = {
   type: 'object',
@@ -78,12 +86,16 @@ export function geminiModel(options: GeminiOptions): Model {
       // A blocked prompt has no candidate: the empty text is not the schema, so it becomes unsure.
       const parts = body.candidates?.[0]?.content?.parts ?? [];
       const usage = body.usageMetadata ?? {};
+      const tokensIn = usage.promptTokenCount ?? 0;
+      const tokensOut = (usage.candidatesTokenCount ?? 0) + (usage.thoughtsTokenCount ?? 0);
+      const price = NANO_USD_PER_TOKEN[options.model];
       return {
         text: parts.map((part) => part.text ?? '').join(''),
         requestId: body.responseId ?? '',
         model: body.modelVersion ?? options.model,
-        tokensIn: usage.promptTokenCount ?? 0,
-        tokensOut: (usage.candidatesTokenCount ?? 0) + (usage.thoughtsTokenCount ?? 0),
+        tokensIn,
+        tokensOut,
+        costNanoUsd: price && tokensIn * price.input + tokensOut * price.output,
       };
     },
   };

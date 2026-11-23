@@ -40,6 +40,8 @@ export interface ModelCall {
   model: string;
   tokensIn?: number;
   tokensOut?: number;
+  /** List price of the call in whole nano-USD (D14); the free tier is billed $0. */
+  costNanoUsd?: number;
   ms: number;
   outcome: 'answered' | 'bad-schema' | 'evidence-mismatch' | 'timeout' | 'model-error';
   /** Why a call failed (HTTP status, network), for the team; never shown to the student. */
@@ -106,6 +108,7 @@ async function askModel(
     model: response.model,
     tokensIn: response.tokensIn,
     tokensOut: response.tokensOut,
+    ...(response.costNanoUsd === undefined ? {} : { costNanoUsd: response.costNanoUsd }),
     ms: ms(),
     outcome: 'answered',
   };
