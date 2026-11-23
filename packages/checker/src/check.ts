@@ -41,7 +41,9 @@ export interface ModelCall {
   tokensIn?: number;
   tokensOut?: number;
   ms: number;
-  outcome: 'answered' | 'bad-schema' | 'evidence-mismatch' | 'timeout';
+  outcome: 'answered' | 'bad-schema' | 'evidence-mismatch' | 'timeout' | 'model-error';
+  /** Why a call failed (HTTP status, network), for the team; never shown to the student. */
+  error?: string;
 }
 
 export interface CheckResult {
@@ -86,14 +88,16 @@ async function askModel(
   try {
     response = await completeWithin(model, prompt, timeoutMs);
   } catch (error) {
-    if (!(error instanceof Timeout)) throw error;
     const call: ModelCall = {
       constraintId: constraint.id,
       model: model.name,
       ms: ms(),
       outcome: 'timeout',
     };
-    return { verdict: unsure(constraint.id, 'timeout'), call };
+    if (error instanceof Timeout) return { verdict: unsure(constraint.id, 'timeout'), call };
+    // D14: a failed call (HTTP error, no connection) costs this pair only.
+    const failed: ModelCall = { ...call, outcome: 'model-error', error: (error as Error).message };
+    return { verdict: unsure(constraint.id, 'model-error'), call: failed };
   }
 
   const call: ModelCall = {
