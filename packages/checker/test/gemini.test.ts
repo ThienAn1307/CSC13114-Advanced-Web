@@ -156,6 +156,48 @@ describe('the response', () => {
   });
 });
 
+describe('retrying a call the provider could not serve right now', () => {
+  const status = (code: number) => new Response('{"error":{"message":"busy"}}', { status: code });
+  const retrying = (fetch: typeof globalThis.fetch, retryDelaysMs = [10, 10]) =>
+    geminiModel({ apiKey: API_KEY, model: MODEL, fetch, minIntervalMs: 0, retryDelaysMs });
+  const signal = () => new AbortController().signal;
+
+  it.each([503, 429])('retries an HTTP %i and gives the answer that follows', async (code) => {
+    const { fetch, sent } = fakeFetch((n) => (n === 1 ? status(code) : answered()));
+    const response = await retrying(fetch).complete({ prompt: 'p', signal: signal() });
+    expect(sent).toHaveLength(2);
+    expect(response.requestId).toBe('resp-abc');
+  });
+
+  it('gives up after the last retry and rejects with the last status', async () => {
+    const { fetch, sent } = fakeFetch(() => status(503));
+    await expect(retrying(fetch).complete({ prompt: 'p', signal: signal() })).rejects.toThrow(
+      /503/,
+    );
+    expect(sent).toHaveLength(3);
+  });
+
+  it('does not retry an error that would fail again, such as HTTP 400', async () => {
+    const { fetch, sent } = fakeFetch(() => status(400));
+    await expect(retrying(fetch).complete({ prompt: 'p', signal: signal() })).rejects.toThrow(
+      /400/,
+    );
+    expect(sent).toHaveLength(1);
+  });
+
+  it('stops waiting to retry as soon as the call is aborted (the time limit still holds)', async () => {
+    const { fetch, sent } = fakeFetch(() => status(503));
+    const controller = new AbortController();
+    setTimeout(() => controller.abort(new Error('time limit')), 50);
+    const started = Date.now();
+    await expect(
+      retrying(fetch, [10_000]).complete({ prompt: 'p', signal: controller.signal }),
+    ).rejects.toThrow();
+    expect(Date.now() - started).toBeLessThan(1000);
+    expect(sent).toHaveLength(1);
+  });
+});
+
 describe('check() with the Gemini client', () => {
   const statement = '# Sorting\n';
   const MERGE = { id: 'C2', text: 'Sort with a merge sort you wrote yourself.', deduction: 4 };
