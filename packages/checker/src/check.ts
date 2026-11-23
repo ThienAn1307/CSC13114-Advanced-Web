@@ -2,7 +2,7 @@
 
 import { decideBanList, type Evidence } from './hard-rules.ts';
 import { parseModelAnswer, type Model, type ModelResponse } from './model.ts';
-import { buildPrompt } from './prompt.ts';
+import { buildPrompt, promptLines, type Identity } from './prompt.ts';
 
 export interface Constraint {
   id: string;
@@ -15,6 +15,8 @@ export interface CheckInput {
   statement: string;
   constraints: Constraint[];
   source: string;
+  /** The student's name, email and id, replaced by placeholders before the code reaches the model (D15). */
+  identity?: Identity;
 }
 
 export type CheckOptions =
@@ -39,7 +41,7 @@ export interface ModelCall {
   tokensIn?: number;
   tokensOut?: number;
   ms: number;
-  outcome: 'answered' | 'bad-schema' | 'timeout';
+  outcome: 'answered' | 'bad-schema' | 'evidence-mismatch' | 'timeout';
 }
 
 export interface CheckResult {
@@ -76,7 +78,8 @@ async function askModel(
   model: Model,
   timeoutMs: number,
 ): Promise<{ verdict: Verdict; call: ModelCall }> {
-  const prompt = buildPrompt(input.statement, constraint.text, input.source);
+  const lines = promptLines(input.source, input.identity);
+  const prompt = buildPrompt(input.statement, constraint.text, lines);
   const started = performance.now();
   const ms = () => Math.round(performance.now() - started);
   let response: ModelResponse;
@@ -109,14 +112,23 @@ async function askModel(
       call: { ...call, outcome: 'bad-schema' },
     };
 
-  // Evidence carries the original line's text (D15); checking it against the prompt comes with the model-call tests.
-  const lines = input.source.split('\n');
+  // D15: each entry must match the line the model was shown; only then is the original line written.
+  const shownAsPrompted = (e: { line: number; text: string }) =>
+    lines[e.line - 1]?.trim() === e.text.trim();
+  const noEvidenceForViolation = answer.verdict === 'violation' && answer.evidence.length === 0;
+  if (noEvidenceForViolation || !answer.evidence.every(shownAsPrompted)) {
+    return {
+      verdict: unsure(constraint.id, 'evidence-mismatch'),
+      call: { ...call, outcome: 'evidence-mismatch' },
+    };
+  }
+  const original = input.source.split('\n');
   const verdict: Verdict = {
     constraintId: constraint.id,
     verdict: answer.verdict,
     evidence: answer.evidence.map(({ line }) => ({
       line,
-      text: (lines[line - 1] ?? '').replace(/\r$/, ''),
+      text: original[line - 1]!.replace(/\r$/, ''),
     })),
     reason: answer.reason,
     decidedBy: 'model',
