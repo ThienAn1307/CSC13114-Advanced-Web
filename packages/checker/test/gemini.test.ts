@@ -108,7 +108,21 @@ describe('the response', () => {
       model: MODEL,
       tokensIn: 120,
       tokensOut: 35,
+      // List price on 2026-11-23: $0.25 and $1.50 per 1M tokens, so 250 and 1500 nano-USD per token.
+      costNanoUsd: 120 * 250 + 35 * 1500,
     });
+  });
+
+  it('has no cost for a model whose list price we have not checked', async () => {
+    const { fetch } = fakeFetch(() => answered());
+    const other = geminiModel({
+      apiKey: API_KEY,
+      model: 'gemini-unpriced',
+      fetch,
+      minIntervalMs: 0,
+    });
+    const response = await other.complete({ prompt: 'p', signal: new AbortController().signal });
+    expect(response.costNanoUsd).toBeUndefined();
   });
 
   it('gives empty text when the prompt was blocked and no candidate came back', async () => {
@@ -158,6 +172,16 @@ describe('check() with the Gemini client', () => {
     );
     expect(result.verdicts[0]).toMatchObject({ verdict: 'unsure', unsureCause: 'bad-schema' });
     expect(result.calls[0]).toMatchObject({ requestId: 'resp-blocked', outcome: 'bad-schema' });
+  });
+
+  it('puts the cost of each call in the call log, as whole nano-USD (PA#3 criterion 4)', async () => {
+    const { fetch } = fakeFetch(() => answered());
+    const { calls } = await check(
+      { statement, constraints: [MERGE], source },
+      { modelOff: false, model: client(fetch), timeoutMs: 2000 },
+    );
+    expect(calls[0]).toMatchObject({ requestId: 'resp-abc', costNanoUsd: 82500 });
+    expect(Number.isInteger(calls[0]?.costNanoUsd)).toBe(true);
   });
 
   it('makes a failed call unsure, cause model-error, and still judges the next constraint (D14)', async () => {
