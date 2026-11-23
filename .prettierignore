@@ -6,4 +6,6 @@ notes/
 
 # drizzle-kit writes these snapshots itself and rewrites them on every `generate`
 packages/db/drizzle/meta/
+
+# the dev set is the published copy, byte for byte; formatting it would change its SHA-256
 eval/dev/
