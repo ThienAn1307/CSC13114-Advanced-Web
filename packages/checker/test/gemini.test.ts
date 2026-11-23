@@ -48,8 +48,9 @@ const answered = (text = ANSWER) =>
     responseId: 'resp-abc',
   });
 
+// Retries have their own tests below; for every other test a failed call is final.
 const client = (fetch: typeof globalThis.fetch, minIntervalMs = 0) =>
-  geminiModel({ apiKey: API_KEY, model: MODEL, fetch, minIntervalMs });
+  geminiModel({ apiKey: API_KEY, model: MODEL, fetch, minIntervalMs, retryDelaysMs: [] });
 
 describe('the request', () => {
   it('posts the prompt to generateContent with the key in a header and a JSON schema', async () => {
