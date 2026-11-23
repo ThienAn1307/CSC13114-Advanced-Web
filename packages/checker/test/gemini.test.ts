@@ -19,10 +19,14 @@ interface Sent {
 function fakeFetch(reply: (n: number) => Response) {
   const sent: Sent[] = [];
   const fetch = (url: string | URL | Request, init?: RequestInit) => {
-    sent.push({ url: String(url), init: init ?? {}, at: Date.now() });
+    sent.push({
+      url: url instanceof Request ? url.url : url.toString(),
+      init: init ?? {},
+      at: Date.now(),
+    });
     return Promise.resolve(reply(sent.length));
   };
-  return { fetch: fetch as typeof globalThis.fetch, sent };
+  return { fetch, sent };
 }
 
 const ok = (body: unknown) =>
@@ -61,7 +65,7 @@ describe('the request', () => {
     expect(init.method).toBe('POST');
     expect(new Headers(init.headers).get('x-goog-api-key')).toBe(API_KEY);
     expect(init.signal).toBe(signal);
-    const body = JSON.parse(String(init.body)) as {
+    const body = JSON.parse(init.body as string) as {
       contents: { parts: { text: string }[] }[];
       generationConfig: { responseMimeType: string; responseJsonSchema: { required: string[] } };
     };
@@ -78,7 +82,7 @@ describe('the request', () => {
     const { fetch, sent } = fakeFetch(() => answered());
     await client(fetch).complete({ prompt: 'p', signal: new AbortController().signal });
     expect(sent[0]?.url).not.toContain(API_KEY);
-    expect(String(sent[0]?.init.body)).not.toContain(API_KEY);
+    expect(sent[0]?.init.body as string).not.toContain(API_KEY);
   });
 
   it('waits minIntervalMs between two calls, to stay under the free-tier rate (15 per minute)', async () => {
