@@ -1,0 +1,12 @@
+[
+  {
+    "id": "C1",
+    "text": "Do not use these standard containers: `std::stack`, `std::vector`, `std::deque`, `std::list`.",
+    "deduction": 3
+  },
+  {
+    "id": "C2",
+    "text": "Match the brackets with a stack you implement yourself: a plain array (a fixed `char` array, or memory you allocate) and the index of its top. Push each opening bracket and pop it when its closing bracket comes. Recursion, a library container, or any method without such a stack does not satisfy this constraint.",
+    "deduction": 4
+  }
+]
