@@ -1,6 +1,8 @@
 // The one function the worker and the checker command call (PA3-plan.md, interface 2).
 
 import { decideBanList, type Evidence } from './hard-rules.ts';
+import { parseModelAnswer, type Model, type ModelResponse } from './model.ts';
+import { buildPrompt } from './prompt.ts';
 
 export interface Constraint {
   id: string;
@@ -15,10 +17,9 @@ export interface CheckInput {
   source: string;
 }
 
-export interface CheckOptions {
+export type CheckOptions =
   /** MODEL_OFF=1: no model client is created and no connection is opened. */
-  modelOff: boolean;
-}
+  { modelOff: true } | { modelOff: false; model: Model; timeoutMs: number };
 
 export interface Verdict {
   constraintId: string;
@@ -29,27 +30,116 @@ export interface Verdict {
   unsureCause?: string;
 }
 
+/** One row of the call log (D14). */
+export interface ModelCall {
+  constraintId: string;
+  /** The provider's request id; none when no answer came back. */
+  requestId?: string;
+  model: string;
+  tokensIn?: number;
+  tokensOut?: number;
+  ms: number;
+  outcome: 'answered' | 'bad-schema' | 'timeout';
+}
+
 export interface CheckResult {
   verdicts: Verdict[];
-  /** One row per model call (D14); empty with the model off. */
-  calls: never[];
+  /** One row per model call; empty with the model off. */
+  calls: ModelCall[];
+}
+
+const unsure = (constraintId: string, unsureCause: string): Verdict => ({
+  constraintId,
+  verdict: 'unsure',
+  evidence: [],
+  decidedBy: 'guardrail',
+  unsureCause,
+});
+
+class Timeout extends Error {}
+
+/** The model's response, or a Timeout once `signal` is aborted, even if the model ignores the signal. */
+function completeWithin(model: Model, prompt: string, timeoutMs: number): Promise<ModelResponse> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(new Timeout()), timeoutMs);
+  const timedOut = new Promise<never>((_resolve, reject) => {
+    controller.signal.addEventListener('abort', () => reject(new Timeout()), { once: true });
+  });
+  return Promise.race([model.complete({ prompt, signal: controller.signal }), timedOut]).finally(
+    () => clearTimeout(timer),
+  );
+}
+
+async function askModel(
+  input: CheckInput,
+  constraint: Constraint,
+  model: Model,
+  timeoutMs: number,
+): Promise<{ verdict: Verdict; call: ModelCall }> {
+  const prompt = buildPrompt(input.statement, constraint.text, input.source);
+  const started = performance.now();
+  const ms = () => Math.round(performance.now() - started);
+  let response: ModelResponse;
+  try {
+    response = await completeWithin(model, prompt, timeoutMs);
+  } catch (error) {
+    if (!(error instanceof Timeout)) throw error;
+    const call: ModelCall = {
+      constraintId: constraint.id,
+      model: model.name,
+      ms: ms(),
+      outcome: 'timeout',
+    };
+    return { verdict: unsure(constraint.id, 'timeout'), call };
+  }
+
+  const call: ModelCall = {
+    constraintId: constraint.id,
+    requestId: response.requestId,
+    model: response.model,
+    tokensIn: response.tokensIn,
+    tokensOut: response.tokensOut,
+    ms: ms(),
+    outcome: 'answered',
+  };
+  const answer = parseModelAnswer(response.text);
+  if (!answer)
+    return {
+      verdict: unsure(constraint.id, 'bad-schema'),
+      call: { ...call, outcome: 'bad-schema' },
+    };
+
+  // Evidence carries the original line's text (D15); checking it against the prompt comes with the model-call tests.
+  const lines = input.source.split('\n');
+  const verdict: Verdict = {
+    constraintId: constraint.id,
+    verdict: answer.verdict,
+    evidence: answer.evidence.map(({ line }) => ({
+      line,
+      text: (lines[line - 1] ?? '').replace(/\r$/, ''),
+    })),
+    reason: answer.reason,
+    decidedBy: 'model',
+  };
+  if (answer.verdict === 'unsure') verdict.unsureCause = 'model-unsure';
+  return { verdict, call };
 }
 
 /** One verdict per constraint, in the constraints' order. Hard rules first; the model never sees what they decided. */
 export async function check(input: CheckInput, options: CheckOptions): Promise<CheckResult> {
-  if (!options.modelOff) {
-    throw new Error('the model path is not built yet; run with the model off (MODEL_OFF=1)');
-  }
-  const verdicts = input.constraints.map((constraint): Verdict => {
+  const verdicts: Verdict[] = [];
+  const calls: ModelCall[] = [];
+  for (const constraint of input.constraints) {
     const decided = decideBanList(constraint.text, input.source);
-    if (decided) return { constraintId: constraint.id, ...decided, decidedBy: 'hard-rule' };
-    return {
-      constraintId: constraint.id,
-      verdict: 'unsure',
-      evidence: [],
-      decidedBy: 'guardrail',
-      unsureCause: 'model-off',
-    };
-  });
-  return Promise.resolve({ verdicts, calls: [] });
+    if (decided) {
+      verdicts.push({ constraintId: constraint.id, ...decided, decidedBy: 'hard-rule' });
+    } else if (options.modelOff) {
+      verdicts.push(unsure(constraint.id, 'model-off'));
+    } else {
+      const { verdict, call } = await askModel(input, constraint, options.model, options.timeoutMs);
+      verdicts.push(verdict);
+      calls.push(call);
+    }
+  }
+  return { verdicts, calls };
 }

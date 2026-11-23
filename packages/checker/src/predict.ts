@@ -4,13 +4,9 @@
 
 import { readdirSync, readFileSync, writeFileSync, type Dirent } from 'node:fs';
 import { join } from 'node:path';
-import { check, type Constraint } from './check.ts';
+import { check, type CheckOptions, type Constraint } from './check.ts';
 
-export interface PredictOptions {
-  data: string;
-  out: string;
-  modelOff: boolean;
-}
+export type PredictOptions = { data: string; out: string } & CheckOptions;
 
 const sortedNames = (dir: string, keep: (entry: Dirent) => boolean) =>
   readdirSync(dir, { withFileTypes: true })
@@ -18,7 +14,7 @@ const sortedNames = (dir: string, keep: (entry: Dirent) => boolean) =>
     .map((entry) => entry.name)
     .sort();
 
-export async function writePredictions({ data, out, modelOff }: PredictOptions): Promise<void> {
+export async function writePredictions({ data, out, ...options }: PredictOptions): Promise<void> {
   const lines: string[] = [];
   for (const problem of sortedNames(join(data, 'problems'), (e) => e.isDirectory())) {
     const folder = join(data, 'problems', problem);
@@ -29,7 +25,7 @@ export async function writePredictions({ data, out, modelOff }: PredictOptions):
     const solutions = join(data, 'solutions', problem);
     for (const file of sortedNames(solutions, (e) => e.isFile() && e.name.endsWith('.cpp'))) {
       const source = readFileSync(join(solutions, file), 'utf8');
-      const { verdicts } = await check({ statement, constraints, source }, { modelOff });
+      const { verdicts } = await check({ statement, constraints, source }, options);
       const solution = `${problem}/${file.slice(0, -'.cpp'.length)}`;
       for (const v of verdicts) {
         lines.push(
