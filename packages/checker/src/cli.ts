@@ -11,7 +11,7 @@ import { writePredictions } from './predict.ts';
 const USAGE =
   'usage: [MODEL_OFF=1] npm run checker -- --data <dataset folder> --out <predictions.jsonl> [--calls <calls.jsonl>]';
 const DEFAULT_MODEL = 'gemini-3.1-flash-lite'; // decisions.md D8
-const TIMEOUT_MS = 30_000;
+const TIMEOUT_MS = 60_000; // room for two retries (5 s and 10 s) after the rate wait
 
 function fail(message: string): never {
   console.error(`${message}\n${USAGE}`);
