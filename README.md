@@ -48,7 +48,23 @@ npm run build --workspace @leetkob/api
 npm start --workspace @leetkob/api           # reads DATABASE_URL, JWT_SECRET and PORT from .env
 ```
 
-`POST /v1/labs/{labId}/submissions` is specified in [`docs/contract/post-lab-submissions.md`](docs/contract/post-lab-submissions.md). There is no login endpoint in PA#2: sign an HS256 token with `JWT_SECRET`, `sub` set to a seeded user id (`packages/db/src/seed.ts`), `role` set to `student` and `exp` set to a future expiry time in seconds since the Unix epoch (contract, section 1). Nothing consumes the queue in PA#2; submissions stay `queued` in the database until the worker arrives in PA#3.
+`POST /v1/labs/{labId}/submissions` is specified in [`docs/contract/post-lab-submissions.md`](docs/contract/post-lab-submissions.md). `POST /v1/auth/login` accepts an email and password and returns a one-hour bearer token. The other D17 routes list and create classes and labs, assign TAs and students, and list a student's own submission statuses. Hidden test input and output are returned to the TA only. The judge worker is separate work: until it is connected, submissions remain `queued`.
+
+## Initial administrator and web app
+
+Apply the migrations and build the API first. Set `DATABASE_URL` in the shell for the bootstrap command. It accepts an email and display name as arguments and the password on standard input; it never accepts a password as a command-line argument. It creates an admin or activates an existing seeded admin, and refuses to run after an admin has credentials. Use a password of at least 12 characters. For example, in PowerShell, read the password without displaying it:
+
+```powershell
+$securePassword = Read-Host 'Initial admin password' -AsSecureString
+$passwordPointer = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($securePassword)
+try {
+  [Runtime.InteropServices.Marshal]::PtrToStringBSTR($passwordPointer) | npm run bootstrap-admin --workspace @leetkob/api -- admin@example.test 'Admin'
+} finally {
+  [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($passwordPointer)
+}
+```
+
+Start the API and run `npm run dev --workspace @leetkob/web` for the web app. The Vite development server proxies `/v1` to the local API. Sign in as the admin, create a class and assign a TA; the TA can add students and create labs with statements, constraints and test cases. A new account needs an initial password; assigning an existing account never changes its password. Students see their own submissions, polled every two seconds. Keep the API and web app behind HTTPS outside local development.
 
 ## Layout
 

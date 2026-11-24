@@ -6,7 +6,8 @@
   "scripts": {
     "typecheck": "tsc -p tsconfig.json",
     "build": "tsc -p tsconfig.build.json",
-    "start": "node --env-file-if-exists=../../.env dist/apps/api/src/server.js"
+    "start": "node --env-file-if-exists=../../.env dist/apps/api/src/server.js",
+    "bootstrap-admin": "node dist/apps/api/src/bootstrap-admin-cli.js"
   },
   "dependencies": {
     "@leetkob/db": "0.0.0",
