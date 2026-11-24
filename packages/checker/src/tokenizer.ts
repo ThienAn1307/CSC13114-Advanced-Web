@@ -44,21 +44,45 @@ const isIdentPart = (c: string | undefined) => c !== undefined && /[\p{L}\p{N}_$
 const isDigit = (c: string | undefined) => c !== undefined && c >= '0' && c <= '9';
 const isAlnum = (c: string | undefined) => c !== undefined && /[0-9A-Za-z_]/.test(c);
 
-/** A backslash right before a newline (`\` LF or `\` CR LF) joins two lines into one. */
-function spliceLength(source: string, i: number): number {
-  if (source[i] !== '\\') return 0;
-  if (source[i + 1] === '\n') return 2;
-  if (source[i + 1] === '\r' && source[i + 2] === '\n') return 3;
-  return 0;
+/** A backslash and a newline (LF or CR LF) join two lines; g++ also allows spaces between them. */
+const SPLICE = /\\[ \t\f\v]*\r?\n/y;
+
+interface Spliced {
+  /** The source without its line splices: `so\`, newline, `rt` is `sort`. */
+  text: string;
+  /** `origin[k]` is the offset of `text[k]` in the source; one more entry for the end. */
+  origin: number[];
+}
+
+/** Takes the line splices out before anything else is read, as the C++ standard does. */
+function removeSplices(source: string): Spliced {
+  const origin: number[] = [];
+  let text = '';
+  let i = 0;
+  while (i < source.length) {
+    SPLICE.lastIndex = i;
+    const splice = SPLICE.exec(source);
+    if (splice) {
+      i += splice[0].length;
+    } else {
+      text += source[i];
+      origin.push(i++);
+    }
+  }
+  origin.push(source.length);
+  return { text, origin };
 }
 
 interface Scan {
   tokens: Token[];
-  /** [start, end) offsets of every comment. */
+  /** [start, end) offsets of every comment, in the original source. */
   comments: [number, number][];
 }
 
+// Reads the text without splices. Lines and comment offsets go back to the original source through
+// `origin`, so line numbers never move (D15).
 function scan(source: string): Scan {
+  const { text, origin } = removeSplices(source);
   const lineStarts = [0];
   for (let i = 0; i < source.length; i++) if (source[i] === '\n') lineStarts.push(i + 1);
   const lineAt = (offset: number) => {
@@ -80,26 +104,30 @@ function scan(source: string): Scan {
   let i = 0;
 
   const push = (kind: TokenKind, start: number, end: number) => {
-    tokens.push({ kind, text: source.slice(start, end), line: lineAt(start), inDirective });
+    const line = lineAt(origin[start]!);
+    tokens.push({ kind, text: text.slice(start, end), line, inDirective });
     atLineStart = false;
     if (inDirective) directiveTokens++;
   };
 
   /** End of a quoted literal that opens at `quote`: past the closing quote, or at the end of the line. */
   const quotedEnd = (quote: number) => {
-    const q = source[quote];
+    const q = text[quote];
     let k = quote + 1;
-    while (k < source.length) {
-      const c = source[k];
+    while (k < text.length) {
+      const c = text[k];
       if (c === '\\') k += 2;
       else if (c === q) return k + 1;
       else if (c === '\n') return k;
       else k++;
     }
-    return source.length;
+    return text.length;
   };
 
-  /** End of a raw string whose `"` is at `quote`: `R"delim( ... )delim"`. */
+  /**
+   * End of a raw string `R"delim( ... )delim"`, from and to an offset in the original source:
+   * a backslash before a newline is plain text there.
+   */
   const rawEnd = (quote: number) => {
     const open = source.indexOf('(', quote + 1);
     if (open < 0) return source.length;
@@ -108,15 +136,10 @@ function scan(source: string): Scan {
     return at < 0 ? source.length : at + close.length;
   };
 
-  while (i < source.length) {
-    const c = source[i]!;
-    const next = source[i + 1];
+  while (i < text.length) {
+    const c = text[i]!;
+    const next = text[i + 1];
 
-    const splice = spliceLength(source, i);
-    if (splice > 0) {
-      i += splice;
-      continue;
-    }
     if (c === '\n') {
       atLineStart = true;
       inDirective = false;
@@ -129,21 +152,17 @@ function scan(source: string): Scan {
     }
 
     if (c === '/' && next === '/') {
-      // Runs to the end of the line; a backslash before the newline carries it on.
       let k = i + 2;
-      while (k < source.length && source[k] !== '\n') {
-        const s = spliceLength(source, k);
-        k += s > 0 ? s : 1;
-      }
-      if (k > i && source[k - 1] === '\r') k--;
-      comments.push([i, k]);
+      while (k < text.length && text[k] !== '\n') k++;
+      if (text[k - 1] === '\r') k--;
+      comments.push([origin[i]!, origin[k]!]);
       i = k;
       continue;
     }
     if (c === '/' && next === '*') {
-      const close = source.indexOf('*/', i + 2);
-      const end = close < 0 ? source.length : close + 2;
-      comments.push([i, end]);
+      const close = text.indexOf('*/', i + 2);
+      const end = close < 0 ? text.length : close + 2;
+      comments.push([origin[i]!, origin[end - 1]! + 1]);
       i = end;
       continue;
     }
@@ -160,10 +179,10 @@ function scan(source: string): Scan {
     if (inDirective && directiveTokens === 2 && (c === '<' || c === '"')) {
       const prev = tokens.at(-1)?.text;
       if (prev === 'include' || prev === 'include_next' || prev === 'import') {
-        const close = source.indexOf(c === '<' ? '>' : '"', i + 1);
-        const eol = source.indexOf('\n', i);
+        const close = text.indexOf(c === '<' ? '>' : '"', i + 1);
+        const eol = text.indexOf('\n', i);
         const end =
-          close >= 0 && (eol < 0 || close < eol) ? close + 1 : eol < 0 ? source.length : eol;
+          close >= 0 && (eol < 0 || close < eol) ? close + 1 : eol < 0 ? text.length : eol;
         push('header-name', i, end);
         i = end;
         continue;
@@ -172,15 +191,18 @@ function scan(source: string): Scan {
 
     if (isIdentStart(c)) {
       let k = i + 1;
-      while (isIdentPart(source[k])) k++;
-      const word = source.slice(i, k);
-      if (source[k] === '"' && RAW_PREFIXES.has(word)) {
-        const end = rawEnd(k);
-        push('literal', i, end);
-        i = end;
+      while (isIdentPart(text[k])) k++;
+      const word = text.slice(i, k);
+      if (text[k] === '"' && RAW_PREFIXES.has(word)) {
+        const quote = origin[k]!;
+        const end = rawEnd(quote);
+        push('literal', i, k);
+        tokens.at(-1)!.text = word + source.slice(quote, end);
+        while (origin[k]! < end) k++;
+        i = k;
         continue;
       }
-      if ((source[k] === '"' || source[k] === "'") && STRING_PREFIXES.has(word)) {
+      if ((text[k] === '"' || text[k] === "'") && STRING_PREFIXES.has(word)) {
         const end = quotedEnd(k);
         push('literal', i, end);
         i = end;
@@ -194,14 +216,14 @@ function scan(source: string): Scan {
     if (isDigit(c) || (c === '.' && isDigit(next))) {
       // A pp-number: digits, letters, dots, exponent signs and digit separators (`1'000`).
       let k = i + 1;
-      while (k < source.length) {
-        const d = source[k];
+      while (k < text.length) {
+        const d = text[k];
         if (
           (d === 'e' || d === 'E' || d === 'p' || d === 'P') &&
-          (source[k + 1] === '+' || source[k + 1] === '-')
+          (text[k + 1] === '+' || text[k + 1] === '-')
         )
           k += 2;
-        else if (d === "'" && isAlnum(source[k + 1])) k += 2;
+        else if (d === "'" && isAlnum(text[k + 1])) k += 2;
         else if (isAlnum(d) || d === '.') k++;
         else break;
       }
@@ -217,7 +239,7 @@ function scan(source: string): Scan {
       continue;
     }
 
-    const punct = PUNCTUATORS.find((p) => source.startsWith(p, i)) ?? c;
+    const punct = PUNCTUATORS.find((p) => text.startsWith(p, i)) ?? c;
     push('punct', i, i + punct.length);
     i += punct.length;
   }
