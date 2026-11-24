@@ -61,6 +61,10 @@ npm workspaces (decisions.md, D2):
 | `apps/api`        | NestJS HTTP API (added in PA#2)              |
 | `apps/worker`     | Judge and constraint checker (added in PA#3) |
 | `apps/web`        | React app (added in PA#3)                    |
+| `tests/harness`   | Tests of the harness itself (added in PA#3)  |
+| `eval/dev`        | The lecturer's dev set, byte for byte        |
+
+`eval/dev` is [fithcmus/awad-leetkob-eval](https://github.com/fithcmus/awad-leetkob-eval) at commit `552c811`, unchanged: `eval/dev.sha256` lists the SHA-256 of every published file, and `tests/harness/src/dev-set.test.ts` fails if a file is changed, added or missing. Lint and Prettier skip it. Score a prediction file with `node eval/dev/eval.mjs --data eval/dev --predictions <file.jsonl>`.
 
 A new workspace must have a `typecheck` script (`npm run typecheck` fails without one) and its own tests.
 
