@@ -36,7 +36,7 @@ jobs:
       - run: npm audit --audit-level=high
 
   # PA#3 criterion 6: the checker image runs with the model off and no network, eval.mjs accepts its
-  # output (exit 0 or 1, never 2) with no wrongful deduction, and our own cases are Accepted.
+  # output (exit 0 or 1, never 2) with exactly the counts pinned below, and our own cases are Accepted.
   checker-model-off:
     runs-on: ubuntu-latest
     permissions:
@@ -69,5 +69,19 @@ jobs:
             set -e
             echo "eval.mjs on eval/$set exited $code"
             test "$code" -eq 0 || test "$code" -eq 1
-            node -e "const s = require('./out/$set-summary.json'); if (s.wrongful !== 0) { console.error(s.wrongfulPairs); process.exit(1); }"
+            # The counts are fixed because no model runs: the hard rules decide every ban-list pair, and
+            # every other pair is unsure (dev 47, own 6). A ban-list pair that turns unsure makes unsure
+            # too high; one that misses a violation, or its evidence line, makes caught too low.
+            node -e "
+              const want = {
+                dev: { missing: 0, wrongful: 0, caught: 15, unsure: 47 },
+                own: { missing: 0, wrongful: 0, caught: 2, unsure: 6 },
+              }['$set'];
+              const got = require('./out/$set-summary.json');
+              for (const key in want) {
+                if (got[key] === want[key]) continue;
+                console.error('eval/$set: ' + key + ' is ' + got[key] + ', expected ' + want[key]);
+                process.exitCode = 1;
+              }
+            "
           done
