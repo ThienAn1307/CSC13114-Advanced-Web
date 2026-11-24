@@ -1,3 +1,6 @@
 * text=auto eol=lf
 *.pdf binary
 *.png binary
+
+# The dev set is compared byte for byte with the published copy: git never rewrites it
+eval/dev/** -text

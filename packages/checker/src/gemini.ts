@@ -77,17 +77,23 @@ export function geminiModel(options: GeminiOptions): Model {
   const fetch = options.fetch ?? globalThis.fetch;
   const minIntervalMs = options.minIntervalMs ?? 4500;
   const retryDelaysMs = options.retryDelaysMs ?? [5000, 10000];
-  let lastCallAt = -Infinity;
+  let nextSlotAt = -Infinity;
 
   return {
     name: options.model,
     async complete({ prompt, signal }): Promise<ModelResponse> {
       for (let attempt = 0; ; attempt++) {
-        const wait = lastCallAt + minIntervalMs - Date.now();
-        if (wait > 0) await pause(wait, signal);
-        lastCallAt = Date.now();
+        // The slot is taken before any await, so two calls at the same time never get the same one.
+        const now = Date.now();
+        const slotAt = Math.max(now, nextSlotAt);
+        nextSlotAt = slotAt + minIntervalMs;
+        if (slotAt > now) await pause(slotAt - now, signal);
         const response = await post(prompt, signal);
-        const body = (await response.json().catch(() => ({}))) as GenerateContentResponse;
+        const body = (await response.json().catch((error: unknown) => {
+          // A 200 we cannot read is a failed call; an error status says enough without its body.
+          if (response.ok) throw error;
+          return {};
+        })) as GenerateContentResponse;
         if (response.ok) return answer(body);
         const error = new Error(
           `Gemini HTTP ${response.status}: ${body.error?.message ?? 'no message'}`,
