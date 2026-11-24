@@ -71,7 +71,7 @@ A new workspace must have a `typecheck` script (`npm run typecheck` fails withou
 
 ## Run the checker
 
-The checker reads a folder with the dev set's layout (`problems/<id>/statement.md`, `problems/<id>/constraints.json`, `solutions/<id>/*.cpp`; nothing else) and writes one prediction line per (solution, constraint) for `eval.mjs` (decisions.md D20). Only the model-off mode exists so far: ban lists are decided by the hard rules (D13) and every semantic constraint is `unsure`.
+The checker reads a folder with the dev set's layout (`problems/<id>/statement.md`, `problems/<id>/constraints.json`, `solutions/<id>/*.cpp`; nothing else) and writes one prediction line per (solution, constraint) for `eval.mjs` (decisions.md D20). Ban lists are decided by the hard rules (D13). With `MODEL_OFF=1` every semantic constraint is `unsure`, and no model client is created and no connection is opened; without it, one Gemini call per semantic constraint decides it.
 
 ```bash
 MODEL_OFF=1 npm run checker -- --data eval/dev --out predictions.jsonl
@@ -85,6 +85,24 @@ docker build -f checker/Dockerfile -t leetkob-checker packages/checker
 mkdir -p out
 docker run --rm --network none -e MODEL_OFF=1 --user "$(id -u):$(id -g)"   -v "$PWD/eval/dev:/data:ro" -v "$PWD/out:/out" leetkob-checker --data /data --out /out/predictions.jsonl
 ```
+
+With the model on, the command needs `GEMINI_API_KEY` in the environment (it exits 2 without it, and it reads no file for it). `GEMINI_MODEL` is optional; the default is the model of decisions.md D8. `--calls` writes the call log, one JSONL line per call:
+
+```bash
+npm run checker -- --data eval/dev --out predictions.jsonl --calls calls.jsonl
+```
+
+### The real dev-set run and what one lab costs
+
+The run committed in [`eval/runs/2026-11-23-gemini-3.1-flash-lite`](eval/runs/2026-11-23-gemini-3.1-flash-lite/README.md) is the checker's first run with the real model: predictions, the `eval.mjs` report, and a call log with Google's request ids, tokens and time per call. It does not pass the eval (2 wrongful deductions, recall 86.5%, unsure 5.9%) and its README says why. Its call log has no prompts and no cost per call; the code writes both since (PR #26, commit b212447).
+
+Cost of one lab, with the arithmetic. A call averaged 734 input and 114 output tokens (30,823 and 4,778 over the 42 calls that returned a response). A lab of 80 Accepted submissions with 2 semantic constraints is 160 calls:
+
+- input 160 × 734 = 117,440 tokens, at $0.25 per 1M = $0.029;
+- output 160 × 114 = 18,240 tokens, at $1.50 per 1M = $0.027;
+- **about $0.057 per lab at the paid price, and $0 on the free tier we use** (Google's pricing page, read 2026-11-23: both "Free of charge").
+
+At one call every 4.5 s (under 15 per minute) that is about 12 minutes, and 160 calls are under the 500 per day of the free tier.
 
 ## Model, spending and secrets
 
