@@ -22,6 +22,20 @@
       "when": 1795502058754,
       "tag": "0002_minor_timeslip",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1795507740619,
+      "tag": "0003_wet_stranger",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1795509346938,
+      "tag": "0004_salty_orphan",
+      "breakpoints": true
     }
   ]
 }

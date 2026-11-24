@@ -66,6 +66,12 @@ try {
 
 Start the API and run `npm run dev --workspace @leetkob/web` for the web app. The Vite development server proxies `/v1` to the local API. Sign in as the admin, create a class and assign a TA; the TA can add students and create labs with statements, constraints and test cases. A new account needs an initial password; assigning an existing account never changes its password. Students see their own submissions, polled every two seconds. Keep the API and web app behind HTTPS outside local development.
 
+### TA review queue
+
+The TA's class page lists constraint proposals and their evidence. A TA explicitly chooses pass or violation; a violation requires matching source lines. Changes retain a history, and the deduction is always read from the lab's constraint. Students cannot access this queue and do not see proposals before publication (Theo FAQ-08: https://github.com/tkob-team/LeeTKOB-FAQ/blob/main/FAQ.md#faq-08). Only the latest submission per student and lab appears (Theo FAQ-02: https://github.com/tkob-team/LeeTKOB-FAQ/blob/main/FAQ.md#faq-02). There is no Publish action in PA#3.
+
+The worker integration boundary is `PostgresReviewQueue.storeProposals(submissionId, proposals)` from `@leetkob/db`: it accepts proposals only after `judge_results` records `AC`, validates evidence against the stored source, and deduplicates by submission and constraint. The judge/check worker still needs to write `judge_results` and the per-test verdicts in `judge_test_results`, then call this boundary for Accepted submissions; this branch does not claim that the queue-to-model pipeline is already connected. The student sees only their own overall and per-test verdicts, never the test input or expected output.
+
 ## Layout
 
 npm workspaces (decisions.md, D2):

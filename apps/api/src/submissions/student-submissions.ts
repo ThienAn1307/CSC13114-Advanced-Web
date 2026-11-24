@@ -8,6 +8,10 @@ export interface StudentSubmissionStatus {
 
 export interface StudentSubmissions {
   list(studentId: string): Promise<StudentSubmissionStatus[]>;
+  listTests(
+    studentId: string,
+    submissionId: string,
+  ): Promise<{ position: number; status: string }[] | null>;
 }
 
 export const STUDENT_SUBMISSIONS = Symbol('STUDENT_SUBMISSIONS');

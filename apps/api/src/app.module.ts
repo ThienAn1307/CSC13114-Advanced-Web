@@ -20,6 +20,8 @@ import { LabsController } from './classes/labs.controller.js';
 import { STUDENT_SUBMISSIONS } from './submissions/student-submissions.js';
 import type { StudentSubmissions } from './submissions/student-submissions.js';
 import { StudentSubmissionsController } from './submissions/student-submissions.controller.js';
+import { REVIEWS, ReviewsController } from './reviews/reviews.controller.js';
+import type { ReviewReader } from './reviews/reviews.controller.js';
 import { SubmissionsModule } from './submissions/submissions.module.js';
 
 export interface ApiDependencies {
@@ -31,6 +33,7 @@ export interface ApiDependencies {
   members?: Members;
   labs?: Labs;
   studentSubmissions?: StudentSubmissions;
+  reviews?: ReviewReader;
 }
 
 @Global()
@@ -45,6 +48,7 @@ class ApiDependenciesModule {
     members,
     labs,
     studentSubmissions,
+    reviews,
   }: ApiDependencies): DynamicModule {
     return {
       module: ApiDependenciesModule,
@@ -77,6 +81,14 @@ class ApiDependenciesModule {
           provide: STUDENT_SUBMISSIONS,
           useValue: studentSubmissions ?? {
             list: () => Promise.reject(new Error('Submission data is unavailable.')),
+            listTests: () => Promise.reject(new Error('Submission data is unavailable.')),
+          },
+        },
+        {
+          provide: REVIEWS,
+          useValue: reviews ?? {
+            list: () => Promise.reject(new Error('Review data is unavailable.')),
+            decide: () => Promise.reject(new Error('Review data is unavailable.')),
           },
         },
       ],
@@ -89,6 +101,7 @@ class ApiDependenciesModule {
         MEMBERS,
         LABS,
         STUDENT_SUBMISSIONS,
+        REVIEWS,
       ],
     };
   }
@@ -106,6 +119,7 @@ export class AppModule {
         MembersController,
         LabsController,
         StudentSubmissionsController,
+        ReviewsController,
       ],
     };
   }

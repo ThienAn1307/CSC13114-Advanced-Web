@@ -1,6 +1,9 @@
 import { useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
 import { LabForm } from './LabForm.js';
+import { ReviewQueue } from './ReviewQueue.js';
+import { SubmissionResults } from './SubmissionResults.js';
+import { request } from './api.js';
 import './style.css';
 
 type Role = 'admin' | 'ta' | 'student';
@@ -16,30 +19,6 @@ type Lab = {
 };
 type Submission = { id: string; labId: string; status: string; receivedAt: string };
 type Session = { token: string; role: Role };
-
-async function request<T>(
-  path: string,
-  token?: string,
-  body?: unknown,
-  extra?: Record<string, string>,
-): Promise<T> {
-  const response = await fetch(path, {
-    method: body === undefined ? 'GET' : 'POST',
-    headers: {
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...(body === undefined ? {} : { 'Content-Type': 'application/json' }),
-      ...extra,
-    },
-    ...(body === undefined ? {} : { body: JSON.stringify(body) }),
-  });
-  if (!response.ok) {
-    const problem = (await response.json().catch(() => ({}))) as { detail?: unknown };
-    throw new Error(
-      typeof problem.detail === 'string' ? problem.detail : 'The request could not be completed.',
-    );
-  }
-  return response.json() as Promise<T>;
-}
 
 function fields(event: FormEvent<HTMLFormElement>): FormData {
   event.preventDefault();
@@ -381,6 +360,7 @@ export function App() {
                   )}
                   {session.role === 'ta' && <LabForm onSubmit={createLab} />}
                 </section>
+                {session.role === 'ta' && <ReviewQueue classId={classId} token={session.token} />}
                 {session.role !== 'student' && (
                   <section className="card">
                     <h2>Add {session.role === 'admin' ? 'a TA' : 'a student'}</h2>
@@ -465,6 +445,11 @@ export function App() {
                         <span>
                           {new Date(submission.receivedAt).toLocaleString()} · {submission.id}
                         </span>
+                        <SubmissionResults
+                          submissionId={submission.id}
+                          token={session.token}
+                          status={submission.status}
+                        />
                       </li>
                     ))}
                   </ul>

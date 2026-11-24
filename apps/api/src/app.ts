@@ -27,7 +27,9 @@ export async function createApp(dependencies: ApiDependencies): Promise<NestExpr
       !(
         isSubmission ||
         /^\/v1\/auth\/login\/?$/i.test(request.path) ||
-        /^\/v1\/classes(?:\/[^/]+\/(?:tas|students|labs))?\/?$/i.test(request.path)
+        /^\/v1\/classes(?:\/[^/]+\/(?:tas|students|labs|reviews\/[^/]+\/decision))?\/?$/i.test(
+          request.path,
+        )
       )
     )
       return next();

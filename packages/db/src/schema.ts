@@ -3,11 +3,13 @@ import {
   check,
   index,
   integer,
+  jsonb,
   pgTable,
   primaryKey,
   text,
   timestamp,
   uuid,
+  uniqueIndex,
 } from 'drizzle-orm/pg-core';
 
 // Timestamps keep milliseconds only: the contract truncates receivedAt to ms and
@@ -132,6 +134,93 @@ export const submissions = pgTable(
       .on(t.receivedAt, t.id)
       .where(sql`${t.status} = 'queued'`),
   ],
+);
+
+/** The judge records the overall result before the checker is allowed to propose verdicts. */
+export const judgeResults = pgTable(
+  'judge_results',
+  {
+    submissionId: uuid('submission_id')
+      .primaryKey()
+      .references(() => submissions.id),
+    status: text('status', { enum: ['AC', 'WA', 'TLE', 'MLE', 'RE', 'CE'] }).notNull(),
+    finishedAt: timestamp('finished_at', ms).notNull(),
+  },
+  (t) => [
+    check('judge_results_status_check', sql`${t.status} in ('AC', 'WA', 'TLE', 'MLE', 'RE', 'CE')`),
+  ],
+);
+
+/** Only the verdict is exposed to the student; inputs and outputs remain in lab_test_cases. */
+export const judgeTestResults = pgTable(
+  'judge_test_results',
+  {
+    submissionId: uuid('submission_id')
+      .notNull()
+      .references(() => judgeResults.submissionId),
+    position: integer('position').notNull(),
+    status: text('status', { enum: ['AC', 'WA', 'TLE', 'MLE', 'RE'] }).notNull(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.submissionId, t.position] }),
+    check('judge_test_results_position_check', sql`${t.position} > 0`),
+    check('judge_test_results_status_check', sql`${t.status} in ('AC', 'WA', 'TLE', 'MLE', 'RE')`),
+  ],
+);
+
+export const reviewProposals = pgTable(
+  'review_proposals',
+  {
+    id: uuid('id').primaryKey(),
+    submissionId: uuid('submission_id')
+      .notNull()
+      .references(() => submissions.id),
+    constraintId: uuid('constraint_id')
+      .notNull()
+      .references(() => labConstraints.id),
+    verdict: text('verdict', { enum: ['pass', 'violation', 'unsure'] }).notNull(),
+    evidence: jsonb('evidence').$type<{ line: number; text: string }[]>().notNull(),
+    reason: text('reason'),
+    decidedBy: text('decided_by', { enum: ['hard-rule', 'model', 'guardrail'] }).notNull(),
+    unsureCause: text('unsure_cause'),
+    decision: text('decision', { enum: ['pass', 'violation'] }),
+    revision: integer('revision').notNull().default(0),
+    reviewedBy: uuid('reviewed_by').references(() => users.id),
+    reviewedAt: timestamp('reviewed_at', ms),
+    reviewEvidence: jsonb('review_evidence').$type<{ line: number; text: string }[]>(),
+  },
+  (t) => [
+    uniqueIndex('review_proposals_submission_constraint_idx').on(t.submissionId, t.constraintId),
+    check('review_proposals_verdict_check', sql`${t.verdict} in ('pass', 'violation', 'unsure')`),
+    check(
+      'review_proposals_decision_check',
+      sql`${t.decision} is null or ${t.decision} in ('pass', 'violation')`,
+    ),
+    check(
+      'review_proposals_decided_by_check',
+      sql`${t.decidedBy} in ('hard-rule', 'model', 'guardrail')`,
+    ),
+  ],
+);
+
+/** Theo FAQ-10: https://github.com/tkob-team/LeeTKOB-FAQ/blob/main/FAQ.md#faq-10 */
+export const reviewDecisionEvents = pgTable(
+  'review_decision_events',
+  {
+    id: uuid('id').primaryKey(),
+    proposalId: uuid('proposal_id')
+      .notNull()
+      .references(() => reviewProposals.id),
+    reviewerId: uuid('reviewer_id')
+      .notNull()
+      .references(() => users.id),
+    previousDecision: text('previous_decision', { enum: ['pass', 'violation'] }),
+    decision: text('decision', { enum: ['pass', 'violation'] }).notNull(),
+    revision: integer('revision').notNull(),
+    evidence: jsonb('evidence').$type<{ line: number; text: string }[]>().notNull(),
+    recordedAt: timestamp('recorded_at', ms).notNull(),
+  },
+  (t) => [uniqueIndex('review_decision_events_revision_idx').on(t.proposalId, t.revision)],
 );
 
 /**

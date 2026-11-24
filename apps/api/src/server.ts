@@ -10,6 +10,7 @@ import { PostgresClassrooms } from './classes/postgres-classrooms.js';
 import { PostgresMembers } from './classes/postgres-members.js';
 import { PostgresLabs } from './classes/postgres-labs.js';
 import { PostgresStudentSubmissions } from './submissions/postgres-student-submissions.js';
+import { PostgresReviewQueue } from './reviews/postgres-review-queue.js';
 
 const handle = createDb(requireDatabaseUrl());
 // Fail at startup, not on the first request, when the database cannot be reached.
@@ -28,6 +29,7 @@ try {
     members: new PostgresMembers(handle.db),
     labs: new PostgresLabs(handle.db),
     studentSubmissions: new PostgresStudentSubmissions(handle.db),
+    reviews: new PostgresReviewQueue(handle.db),
   });
 } catch (error) {
   await handle.close();
