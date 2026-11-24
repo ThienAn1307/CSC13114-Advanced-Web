@@ -105,3 +105,76 @@ Thiên Ân writes the signatures, the order of checks and the test list in an in
 ## Out of scope for PA#2
 
 A login endpoint; `.cpp` multipart upload; judging, the checker and model calls (contract tests replace the queue with a fake through NestJS dependency injection); Redis in CI; `apps/web`; TA test submissions (checking a TA's sample solution is a separate feature).
+
+## PA#3 decisions
+
+**Status:** proposed by Thiên Ân on 2026-11-21 for the PA#3 kickoff, revised on 2026-11-23 after review, **to be confirmed by Phú Dinh and Hoàng Hải**. If D11 is accepted, the queue row of D3, the "Enqueue fails" row of D6 and the Stack line of `AGENTS.md` change in the same pull request.
+
+## D11. The queue is a PostgreSQL table (replaces BullMQ in D3)
+
+A submission row is the job. A worker claims the oldest row `WHERE status = 'queued' OR (status = 'judging' AND lease_until < now())` with `SELECT ... FOR UPDATE SKIP LOCKED`, marks it `judging` with a new `lease_until` and a fresh claim token, adds 1 to `attempts`, and commits. So a row whose lease ran out (the worker died) is claimed again with a new token. After 3 claims the row goes to the final status `failed` with its cause: the TA sees the cause, the student sees "could not be judged" and no verdict. The index that serves the claim is chosen in the migration pull request (Phú Dinh); one option is a partial index on `lease_until WHERE status = 'judging'`. A worker writes its results only `WHERE id = $1 AND claim_token = $2`, so a worker whose lease ran out cannot overwrite the results of the one that took over. Each test's judge result and each verdict is written once: the per-test results go in with the status change in one transaction, and verdicts have a unique index on `(submission_id, constraint_id)` and are inserted with `ON CONFLICT DO NOTHING`.
+
+**Why:** the outbox of D6 is already this table. PA#3 criterion 2 asks that a submission made while the worker is stopped is judged exactly once after it starts again; here that is one transaction, one claim token and one unique index. The deployment runs one service fewer. The `attempts` limit keeps a submission that crashes the worker every time from holding the queue forever, which matters most during the PA#4 red team.
+**Cost:** no BullMQ retries or dashboard; we write the claim and the lease ourselves. **Alternative:** keep BullMQ and add Redis to CI and to the deployment.
+**Changes with it:** D3 (the Queue row, and "Redis is reused for real-time results in PA#5", which PA#5 decides again), D6 ("Enqueue fails": the row is the job, so there is nothing to re-enqueue), the README, `REDIS_URL` in `.env.example`, and the comment in `apps/api/src/outbox-queue.ts`.
+
+## D12. Two worker processes: judge and check
+
+One codebase in `apps/worker`, two entrypoints, two services in compose. `judge` can start containers and has no `GEMINI_API_KEY`. `check` has the key and no access to Docker; it runs `packages/checker` on Accepted submissions only (FAQ-04). `judge` starts each sandbox with an explicitly empty environment: no `-e`, no `--env-file`, and the `docker` command itself is spawned with only the variables it needs.
+
+`check` claims its work from a table of its own, `check_jobs`: one row per Accepted submission, with its own status, `lease_until`, claim token and `attempts`, inserted in the same transaction that writes the Accepted result, and claimed the same way as in D11.
+
+**Why:** the process that starts the sandboxes never holds the key, so it cannot pass it on (brief, section 5; session 6: "the worker passes its environment on"). With `check_jobs`, `submissions.status` stays the judge status, which is exactly what the student may see (FAQ-08), so the check status never shows; a check retry or an exhausted model quota never touches the judge row; and each table has a simple claim and index.
+
+## D13. Hard rules: a C++ tokenizer and rules that know declarations
+
+`packages/checker` splits the code into tokens. Comments and string, character and raw-string literals are not code; preprocessor lines are. The header name of an `#include` (`<string>`) is one token that names a file, not a banned name. A constraint whose text starts with "Do not use" or "Do not call" is a ban list, and the banned names are the words in backticks in its text (dev set README). A banned name matches:
+
+- as a qualified name (`std::sort`, `std :: sort`, `::qsort`), also through a namespace alias (`namespace rg = std::ranges;` then `rg::sort`);
+- as an unqualified name (`sort`, `qsort`) unless the student declared something of that name. Code that compiles found an undeclared name in a library, whether through `using`, argument-dependent lookup (`sort(v.begin(), v.end())` with no `using`) or a C header;
+- as a keyword (`for`, `goto`);
+- as a member (`.rbegin()`, `->rend()`) when the banned name has no namespace.
+
+A macro or alias that names a banned function is caught at its `#define`, `using` or `typedef` line, because those lines are code. If a backtick holds something that is not a name, the hard rule does not decide that constraint. No rule names a problem.
+
+**Why:** the traps (the student's own `sort`, a banned name in a comment or a string, `<algorithm>` included only for `std::swap`) must not fire (PA#3 criterion 3). A tokenizer needs no native dependency, and every rule can be explained at the oral. **Alternative:** tree-sitter-cpp (WASM) for a full syntax tree; the rules about names would still be ours.
+
+## D14. One model call per (submission, semantic constraint)
+
+The prompt holds the statement, that one constraint, and the code with comments blanked and the student's identity replaced (D15). String literals stay in the code, so an injection inside a string still reaches the model: the prompt marks the code as data to judge, never as instructions. A constraint that a hard rule decided is never sent to the model. The model returns `verdict`, `evidence` (line and text) and `reason`, and nothing else: there is no deduction field. Our code checks the answer against that schema and each evidence line against the code (D15). A failure, or no answer within the time limit, becomes `unsure` with its cause (FAQ-09).
+
+Each call writes one row to the call log: submission, constraint, the provider's request id, model, input and output tokens, time in milliseconds, cost, and the outcome (PA#3 criterion 4).
+
+**Why:** a timeout or a schema failure costs one pair, not the whole submission, and the call log has one row per pair (PA#3 criteria 4 and 5).
+
+## D15. Line numbers never move
+
+Comments are replaced by spaces and every newline is kept, so line N of the prompt is line N of the submission. The student's name, email and student id are replaced by placeholders on the same line. Each evidence entry's text from the model (trimmed) is first compared with line N **of the prompt**; a mismatch makes the pair `unsure` ("evidence does not match the code", FAQ-09). Only then is the entry written with the text of the original line, which `eval.mjs` compares. Comparing with the original line instead would hide a made-up line behind the real one.
+
+## D16. Deployment: one VM from Azure for Students
+
+An Ubuntu VM running `docker compose`. Only the web port is open to everyone; SSH accepts only the team's keys (no password login); PostgreSQL is not reachable from outside. The VM has at least 2 GiB of memory, because it runs PostgreSQL, the API, two workers and the sandboxes; the 1 GiB sizes are not used. The size and its monthly price are taken from the portal at sign-up and written here, so the credit lasts until 31/12. Azure for Students gives credit without a card, verified with the school email (to be confirmed at sign-up). It runs from PA#3 until the PA#6 oral; the PA#4 red team attacks it.
+
+**Why:** the judge worker must start containers, which a PaaS does not allow. A laptop behind a tunnel would run strangers' code on our own machine, and would have to stay on until the end of December.
+
+## D17. Sign-in, classes and screens
+
+`POST /v1/auth/login` with email and password. Passwords are hashed with Node's built-in `crypto.scrypt`, so no dependency is added; the token stays HS256 as in D5. The admin creates classes and TAs and assigns TAs to classes. A TA adds students to a class they teach, one of the two ways FAQ-01 allows (the other, an invite code, is not built). A TA sees only the labs and the review queue of their own classes: a lab of another class gets `404 lab-not-found`, the same answer as a lab that does not exist (the rule D5 set for students in the PA#2 contract, now for TAs too). The web app (D2) is React with Vite: sign-in; admin; the TA's labs, a new lab, adding students and the review queue; the student's labs, the submit page and the submission's status. The status page polls every 2 seconds; real-time updates come in PA#5.
+
+## D18. Verdicts go only to the TA's review queue
+
+Every verdict, from a hard rule or from the model, is a proposal in the TA's review queue. Nothing turns a verdict into a grade or a deduction. Before grades are published, the student sees only the judge's result for each test (FAQ-02); constraint verdicts, hard rule and model alike, stay hidden. Theo FAQ-08: https://github.com/tkob-team/LeeTKOB-FAQ/blob/main/FAQ.md#faq-08. PA#3 has no Publish. When Publish is built, it refuses while any queue item has no TA decision, `unsure` included (FAQ-09, FAQ-12).
+
+**Why:** the syllabus rule for PA#3: a model verdict that changes a grade, or reaches the student as a deduction, without the TA, costs criteria 4, 5 and 6.
+
+## D19. The sandbox (PA#3 criterion 2)
+
+The judge compiles and runs inside the sandbox: two `docker run` per submission (compile, then the tests), code and tests in through stdin and results out through stdout, nothing mounted. Flags: `--network none --user 65534:65534 --read-only --tmpfs /tmp:rw,exec,nosuid,size=16m --memory 256m --memory-swap 256m --pids-limit 16 --cpus 1 --cap-drop ALL --security-opt no-new-privileges`, output capped at 1 MB, the lab's CPU limit, and a wall clock in the worker that runs `docker kill` on the container (FAQ-05 for the numbers). The image `judge-cpp` is pinned by digest. The memory needed to compile `#include <bits/stdc++.h>` with `-O2` in `judge-cpp` is measured first: if it is close to 256m, the compile run gets its own limit (for example 512m), while the test run keeps the lab's limit, and the 1 GiB memory attack targets the test run. Each of the nine minimum attacks has one submission in `sandbox/attacks/` and one test; CI job `sandbox` runs them on every pull request and on the `pa3` tag.
+
+**Why:** criterion 2 asks for all nine with an attack each, compiling inside the sandbox, and a CI run on the tag. Never on the command: `-v /var/run/docker.sock`, `--privileged`, `--env-file`, `-e GEMINI_API_KEY`.
+
+## D20. The checker command (PA#3 criterion 6)
+
+`npm run checker -- --data <folder> --out <file.jsonl>` reads a folder with the dev set's layout and writes one prediction line per (solution, constraint). It needs only `statement.md` and `constraints.json` of each problem. `checker/Dockerfile` builds an image that runs the same command. With `MODEL_OFF=1` it creates no model client and opens no network connection, so it runs under `docker run --network none`; the hard rules decide the ban lists (D13) and every semantic pair is `unsure`. Our own cases live in `eval/own/` with the same layout: at least 5, each labelled and tagged, at least one `trap` and one `injection`, each compiled with `g++ -std=c++17 -O2` and run against the tests before it is labelled.
+
+**Why:** the lecturer runs one command on the held-out set, with no network when the model is off; `eval.mjs` must exit 0 or 1 on its output, never 2.
