@@ -92,17 +92,16 @@ With the model on, the command needs `GEMINI_API_KEY` in the environment (it exi
 npm run checker -- --data eval/dev --out predictions.jsonl --calls calls.jsonl
 ```
 
-### The real dev-set run and what one lab costs
+### The real runs and what one lab costs
 
-The run committed in [`eval/runs/2026-11-23-gemini-3.1-flash-lite`](eval/runs/2026-11-23-gemini-3.1-flash-lite/README.md) is the checker's first run with the real model: predictions, the `eval.mjs` report, and a call log with Google's request ids, tokens and time per call. It does not pass the eval (2 wrongful deductions, recall 86.5%, unsure 5.9%) and its README says why. Its call log has no prompts and no cost per call; the code writes both since (PR #26, commit b212447).
+Two runs with the real model are committed, each with its predictions, the `eval.mjs` report and a call log (Google's request ids, tokens, time; the second also has the prompt sent and the cost of each call). Neither meets all three thresholds; their READMEs say why. The runs use different models and prompts, so they are not a before-and-after.
 
-Cost of one lab, with the arithmetic. A call averaged 734 input and 114 output tokens (30,823 and 4,778 over the 42 calls that returned a response). A lab of 80 Accepted submissions with 2 semantic constraints is 160 calls:
+| Run                                                                                        | Dev set: wrongful / recall / unsure | Own cases              |
+| ------------------------------------------------------------------------------------------ | ----------------------------------- | ---------------------- |
+| [`2026-11-23-gemini-3.1-flash-lite`](eval/runs/2026-11-23-gemini-3.1-flash-lite/README.md) | 2 / 86.5% / 5.9%                    | not run                |
+| [`2026-11-25-gemini-3.5-flash-lite`](eval/runs/2026-11-25-gemini-3.5-flash-lite/README.md) | 2 / 91.9% / 2.9%                    | 0 / 100% / 0% (passes) |
 
-- input 160 × 734 = 117,440 tokens, at $0.25 per 1M = $0.029;
-- output 160 × 114 = 18,240 tokens, at $1.50 per 1M = $0.027;
-- **about $0.057 per lab at the paid price, and $0 on the free tier we use** (Google's pricing page, read 2026-11-23: both "Free of charge").
-
-At one call every 4.5 s (under 15 per minute) that is about 12 minutes, and 160 calls are under the 500 per day of the free tier.
+Cost of one lab, with the arithmetic, from the second run (`gemini-3.5-flash-lite`, 790 input and 122 output tokens per answered call, list price $0.30 and $2.50 per 1M tokens, read on Google's pricing page on 2026-11-25): one call is 790 × 300 + 122 × 2500 = 542,000 nano-USD. A lab of 80 Accepted submissions with 2 semantic constraints is 160 calls, 160 × 542,000 = 86,720,000 nano-USD = **$0.0867 at the paid price, $0 on the free tier we use** (both prices "Free of charge" there). At one call every 4.5 s (under 15 per minute) that is about 12 minutes, and 160 calls are under the free tier's 500 per day.
 
 ## Model, spending and secrets
 
