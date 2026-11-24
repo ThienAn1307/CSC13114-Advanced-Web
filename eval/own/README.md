@@ -21,7 +21,9 @@ Every solution is Accepted: `check-accepted.sh` compiles it with `g++ -std=c++17
 its output token by token with every `.out` file. Run it in a GCC container, with no network:
 
 ```bash
-docker run --rm --network none -v "$PWD/eval/own:/data:ro" gcc:14 sh /data/check-accepted.sh
+docker run --rm --network none -v "$PWD/eval/own:/data:ro" \
+  gcc:14@sha256:a6f425a380ee03e682df3b436fc9077c544fb0fea0a9cab943c3b8320db10765 \
+  sh /data/check-accepted.sh
 ```
 
 Score a prediction file with `node eval/dev/eval.mjs --data eval/own --predictions <file.jsonl>`.
