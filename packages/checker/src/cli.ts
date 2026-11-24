@@ -33,8 +33,11 @@ let options: CheckOptions;
 if (process.env.MODEL_OFF === '1') {
   options = { modelOff: true };
 } else {
-  const apiKey = process.env.GEMINI_API_KEY;
+  const apiKey = process.env.GEMINI_API_KEY?.trim();
   if (!apiKey) fail('GEMINI_API_KEY is not set; set it, or run with MODEL_OFF=1');
+  // fetch repeats a header value it cannot send in its error, which the call log keeps: stop here.
+  if (!/^[\x21-\x7e]+$/.test(apiKey))
+    fail('GEMINI_API_KEY has a space, a line break or another character a key cannot have');
   const model = process.env.GEMINI_MODEL || DEFAULT_MODEL;
   options = { modelOff: false, model: geminiModel({ apiKey, model }), timeoutMs: TIMEOUT_MS };
 }

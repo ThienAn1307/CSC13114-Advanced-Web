@@ -1,5 +1,12 @@
 // Hard rules (D13): a ban-list constraint is decided by reading the code's tokens, never by the model.
 
+import {
+  AFTER_DECLARED_NAME,
+  DECLARES_NEXT_NAME,
+  POINTER_OR_REFERENCE,
+  TYPE_KEYWORDS,
+  visibleNames,
+} from './scopes.ts';
 import { tokenize, type Token } from './tokenizer.ts';
 
 export interface Evidence {
@@ -36,16 +43,6 @@ export function banListNames(constraintText: string): string[] | null {
   }
   return names.length > 0 ? names : null;
 }
-
-// A name right after one of these, and right before `(`, `=`, `;` ..., is being declared.
-// prettier-ignore
-const TYPE_KEYWORDS = new Set([
-  'void', 'bool', 'char', 'char8_t', 'char16_t', 'char32_t', 'wchar_t', 'short', 'int', 'long',
-  'float', 'double', 'signed', 'unsigned', 'auto',
-]);
-const AFTER_DECLARED_NAME = new Set(['(', '=', ';', ',', '[', '{', ')']);
-const DECLARES_NEXT_NAME = new Set(['class', 'struct', 'union', 'enum', 'namespace']);
-const POINTER_OR_REFERENCE = new Set(['*', '&', '&&']);
 
 /** Names the student declared: functions, variables, classes, namespaces. */
 function declaredNames(tokens: Token[]): Set<string> {
@@ -123,11 +120,11 @@ const endsWith = (whole: string[], tail: string[]) =>
   tail.length <= whole.length && sameSegments(whole.slice(whole.length - tail.length), tail);
 
 /** Does this use of a name refer to the banned name? */
-function refersTo(use: NameUse, banned: string[], declared: Set<string>): boolean {
+function refersTo(use: NameUse, banned: string[], declared: Set<string>, isOwn: boolean): boolean {
   const name = use.segments.at(-1)!;
   if (use.member) return banned.length === 1 && !declared.has(name);
   if (use.global) return sameSegments(use.segments, banned);
-  if (use.segments.length === 1) return !declared.has(name);
+  if (use.segments.length === 1) return !isOwn;
   if (sameSegments(use.segments, banned)) return true;
   if (banned.length === 1) return use.segments.length === 2 && use.segments[0] === 'std';
   // `ranges::sort` for `std::ranges::sort`, under `using namespace std;`.
@@ -144,6 +141,7 @@ export function decideBanList(constraintText: string, source: string): HardRuleV
 
   const tokens = tokenize(source);
   const declared = declaredNames(tokens);
+  const visible = visibleNames(tokens);
   const aliases = namespaceAliases(tokens);
   const found = new Map<number, Set<string>>();
 
@@ -157,7 +155,9 @@ export function decideBanList(constraintText: string, source: string): HardRuleV
         hit = segments.length === 1;
       } else {
         const use = nameUse(tokens, i, aliases);
-        hit = use !== null && refersTo(use, segments, declared);
+        // If the brackets do not balance, any declaration in the file counts.
+        const isOwn = visible ? visible(i) : declared.has(token.text);
+        hit = use !== null && refersTo(use, segments, declared, isOwn);
       }
       if (hit) found.set(token.line, (found.get(token.line) ?? new Set()).add(banned));
     }

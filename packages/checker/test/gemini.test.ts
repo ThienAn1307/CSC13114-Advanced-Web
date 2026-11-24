@@ -96,6 +96,17 @@ describe('the request', () => {
   });
 });
 
+describe('calls made at the same time', () => {
+  it('still keep minIntervalMs between one another', async () => {
+    const { fetch, sent } = fakeFetch(() => answered());
+    const model = client(fetch, 150);
+    const signal = new AbortController().signal;
+    await Promise.all(['a', 'b', 'c'].map((prompt) => model.complete({ prompt, signal })));
+    expect(sent[1]!.at - sent[0]!.at).toBeGreaterThanOrEqual(120);
+    expect(sent[2]!.at - sent[1]!.at).toBeGreaterThanOrEqual(120);
+  });
+});
+
 describe('the response', () => {
   it('gives the text, the provider request id, the model version and the tokens', async () => {
     const { fetch } = fakeFetch(() => answered());
@@ -170,6 +181,22 @@ describe('the response', () => {
   });
 });
 
+describe('a response body that cannot be read', () => {
+  it('rejects when the status is 200: there is no answer to judge', async () => {
+    const { fetch } = fakeFetch(() => new Response('{"candidates": [{"cont', { status: 200 }));
+    await expect(
+      client(fetch).complete({ prompt: 'p', signal: new AbortController().signal }),
+    ).rejects.toThrow(SyntaxError);
+  });
+
+  it('still rejects with the status when the status is an error', async () => {
+    const { fetch } = fakeFetch(() => new Response('<html>Bad gateway</html>', { status: 502 }));
+    await expect(
+      client(fetch).complete({ prompt: 'p', signal: new AbortController().signal }),
+    ).rejects.toThrow('Gemini HTTP 502: no message');
+  });
+});
+
 describe('retrying a call the provider could not serve right now', () => {
   const status = (code: number) => new Response('{"error":{"message":"busy"}}', { status: code });
   const retrying = (fetch: typeof globalThis.fetch, retryDelaysMs = [10, 10]) =>
@@ -228,6 +255,17 @@ describe('check() with the Gemini client', () => {
     );
     expect(result.verdicts[0]).toMatchObject({ verdict: 'unsure', unsureCause: 'bad-schema' });
     expect(result.calls[0]).toMatchObject({ requestId: 'resp-blocked', outcome: 'bad-schema' });
+  });
+
+  it('makes a truncated HTTP 200 unsure, cause model-error, not an answer of 0 tokens', async () => {
+    const { fetch } = fakeFetch(() => new Response('{"candidates": [{"cont', { status: 200 }));
+    const result = await check(
+      { statement, constraints: [MERGE], source },
+      { modelOff: false, model: client(fetch), timeoutMs: 2000 },
+    );
+    expect(result.verdicts[0]).toMatchObject({ verdict: 'unsure', unsureCause: 'model-error' });
+    expect(result.calls[0]).toMatchObject({ outcome: 'model-error' });
+    expect(result.calls[0]).not.toHaveProperty('tokensIn');
   });
 
   it('puts the cost of each call in the call log, as whole nano-USD (PA#3 criterion 4)', async () => {
