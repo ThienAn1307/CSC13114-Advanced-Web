@@ -78,15 +78,37 @@ For the worker integration, `judge()` on `feat/pa3-judge-sandbox` returns an ove
 
 npm workspaces (decisions.md, D2):
 
-| Folder            | What it is                                   |
-| ----------------- | -------------------------------------------- |
-| `packages/shared` | Code shared by the API and the worker        |
-| `packages/db`     | Drizzle schema, migrations, seed, data layer |
-| `apps/api`        | NestJS HTTP API (added in PA#2)              |
-| `apps/worker`     | Judge and constraint checker (added in PA#3) |
-| `apps/web`        | React app (added in PA#3)                    |
+| Folder             | What it is                                                                |
+| ------------------ | ------------------------------------------------------------------------- |
+| `packages/shared`  | Code shared by the API and the worker                                     |
+| `packages/db`      | Drizzle schema, migrations, seed, data layer                              |
+| `packages/checker` | Constraint checker: tokenizer, hard rules, `check()`, the checker command |
+| `apps/api`         | NestJS HTTP API (added in PA#2)                                           |
+| `apps/worker`      | Judge and constraint checker (added in PA#3)                              |
+| `apps/web`         | React app (added in PA#3)                                                 |
+| `tests/harness`    | Tests of the harness itself (added in PA#3)                               |
+| `eval/dev`         | The lecturer's dev set, byte for byte                                     |
+
+`eval/dev` is [fithcmus/awad-leetkob-eval](https://github.com/fithcmus/awad-leetkob-eval) at commit `552c811`, unchanged: `eval/dev.sha256` lists the SHA-256 of every published file, and `tests/harness/src/dev-set.test.ts` fails if a file is changed, added or missing. Lint and Prettier skip it. Score a prediction file with `node eval/dev/eval.mjs --data eval/dev --predictions <file.jsonl>`.
 
 A new workspace must have a `typecheck` script (`npm run typecheck` fails without one) and its own tests.
+
+## Run the checker
+
+The checker reads a folder with the dev set's layout (`problems/<id>/statement.md`, `problems/<id>/constraints.json`, `solutions/<id>/*.cpp`; nothing else) and writes one prediction line per (solution, constraint) for `eval.mjs` (decisions.md D20). Only the model-off mode exists so far: ban lists are decided by the hard rules (D13) and every semantic constraint is `unsure`.
+
+```bash
+MODEL_OFF=1 npm run checker -- --data eval/dev --out predictions.jsonl
+node eval/dev/eval.mjs --data eval/dev --predictions predictions.jsonl     # exit 0 or 1, never 2
+```
+
+The same command in a container, with no network (the image needs no `npm install`: Node 24 runs the TypeScript sources):
+
+```bash
+docker build -f checker/Dockerfile -t leetkob-checker packages/checker
+mkdir -p out
+docker run --rm --network none -e MODEL_OFF=1 --user "$(id -u):$(id -g)"   -v "$PWD/eval/dev:/data:ro" -v "$PWD/out:/out" leetkob-checker --data /data --out /out/predictions.jsonl
+```
 
 ## Model, spending and secrets
 
