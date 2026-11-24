@@ -169,7 +169,11 @@ describe('JudgeQueue.claim', () => {
     try {
       await other.query('begin');
       await other.query('select id from submissions where id = $1 for update', [locked]);
-      expect((await claimed(judge)).submissionId).toBe(free);
+      // A claim that waits for the lock would wait for this test; fail instead of hanging.
+      const waited = new Promise<'waited'>((resolve) => setTimeout(() => resolve('waited'), 2000));
+      expect(await Promise.race([judge.claim(LEASE_MS), waited])).toMatchObject({
+        submissionId: free,
+      });
     } finally {
       await other.query('rollback');
       other.release();
