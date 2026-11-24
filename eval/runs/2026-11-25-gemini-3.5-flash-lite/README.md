@@ -8,9 +8,10 @@ eval; the numbers are reported as they came out.
 - Code: commit `56ca58f` (the list price of 3.5), which includes the retries on 429 and 503, the
   call log with prompts and costs, and the two general prompt rules added after the first run
   (`gemini-3.1-flash-lite`, in `../2026-11-23-gemini-3.1-flash-lite`).
-- Model: `gemini-3.5-flash-lite`, chosen for this run because `gemini-3.1-flash-lite` answered
-  HTTP 503 ("experiencing high demand") from 2026-11-23 to at least 2026-11-25 00:25, when 3.5
-  answered 200. The runs use different models and different prompts, so their numbers are not a
+- Model: `gemini-3.5-flash-lite`, chosen because `gemini-3.1-flash-lite` answered HTTP 503
+  ("experiencing high demand") to every call we made from 2026-11-23 23:32 until at least
+  2026-11-25 00:25, when 3.5 answered 200. (The first run, 3.1 on 2026-11-23 17:42, had answered 41
+  of 47.) The runs use different models and different prompts, so their numbers are not a
   before-and-after. Free tier, same limits as 3.1 (decisions.md D8).
 - Command, run by Thiên Ân with the key loaded from `.env` into that one process, with
   `GEMINI_MODEL=gemini-3.5-flash-lite`:
