@@ -114,6 +114,19 @@ describe('the response', () => {
     });
   });
 
+  // Google's pricing page, read 2026-11-25: $0.30 and $2.50 per 1M tokens, thinking included.
+  it('knows the list price of gemini-3.5-flash-lite too', async () => {
+    const { fetch } = fakeFetch(() => answered());
+    const other = geminiModel({
+      apiKey: API_KEY,
+      model: 'gemini-3.5-flash-lite',
+      fetch,
+      minIntervalMs: 0,
+    });
+    const response = await other.complete({ prompt: 'p', signal: new AbortController().signal });
+    expect(response.costNanoUsd).toBe(120 * 300 + 35 * 2500);
+  });
+
   it('has no cost for a model whose list price we have not checked', async () => {
     const { fetch } = fakeFetch(() => answered());
     const other = geminiModel({
