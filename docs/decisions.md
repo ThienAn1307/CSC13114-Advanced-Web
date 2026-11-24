@@ -62,7 +62,7 @@ The full contract goes in `docs/contract/post-lab-submissions.md`.
 
 `AGENTS.md` is the only rules file. `CLAUDE.md` contains one line, `@AGENTS.md`, so Claude Code reads the same rules. `.claude/settings.json` enforces the allowed, ask-first and never tiers for Claude Code; for the other tools the tiers live as text in `AGENTS.md`.
 
-A rule line is added when an assistant actually got something wrong, and the AI-LOG entry or commit that caused it is the line's story (PA#2 rubric, criterion 1).
+A rule line is added when an assistant actually got something wrong, or when a rubric asks for it; the AI-LOG entry, the commit or the rubric line is the line's story (PA#2 rubric, criterion 1).
 
 ## D8. Model provider: Gemini Flash-Lite, free tier only
 
