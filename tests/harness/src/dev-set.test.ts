@@ -35,6 +35,13 @@ describe('the dev set in eval/dev', () => {
     expect(sha256(join(devSet, 'labels.jsonl'))).toMatch(/^262cda7b0ef5612e/);
   });
 
+  it('has the manifest of the published copy, 128 files, so deleting a file and its line fails', () => {
+    expect(sha256(manifest)).toBe(
+      'd908f9d315cf36ce2730960a8af0052a0e432c8d7484ee7e76025e55c189700d',
+    );
+    expect(readManifest().size).toBe(128);
+  });
+
   it('matches the published copy file by file, with no file added or missing', () => {
     const expected = readManifest();
     expect(filesUnder(devSet)).toEqual([...expected.keys()].sort());

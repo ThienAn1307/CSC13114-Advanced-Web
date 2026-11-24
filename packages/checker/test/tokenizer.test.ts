@@ -121,6 +121,65 @@ describe('tokenize', () => {
   });
 });
 
+// A backslash right before a newline joins two lines before anything else is read (a line splice).
+describe('tokenize: line splices', () => {
+  const at = (source: string, text: string) => tokenize(source).find((t) => t.text === text);
+
+  it('joins a name split by a splice, on the line of its first character', () => {
+    const source = code('int x;', 'std::so\\', 'rt(a, b);', 'int y;');
+    expect(at(source, 'sort')).toMatchObject({ kind: 'identifier', line: 2 });
+    expect(at(source, 'y')?.line).toBe(4);
+  });
+
+  it('joins a name split by a CRLF splice, and one with spaces after the backslash as g++ does', () => {
+    expect(at('std::so\\\r\nrt(a, b);\r\n', 'sort')?.line).toBe(1);
+    expect(at('std::so\\  \nrt(a, b);\n', 'sort')?.line).toBe(1);
+  });
+
+  it('joins keywords, numbers and punctuators', () => {
+    expect(kinds(tokenize(code('f\\', 'or 1\\', '2 std:\\', ':x p-\\', '>y')))).toEqual([
+      ['keyword', 'for'],
+      ['number', '12'],
+      ['identifier', 'std'],
+      ['punct', '::'],
+      ['identifier', 'x'],
+      ['identifier', 'p'],
+      ['punct', '->'],
+      ['identifier', 'y'],
+    ]);
+  });
+
+  it('reads a comment whose `//`, `/*` or `*/` is split by a splice', () => {
+    expect(codeTexts(code('a /\\', '/ std::sort', 'b'))).toEqual(['a', 'b']);
+    expect(codeTexts(code('a /\\', '* std::sort *\\', '/ b'))).toEqual(['a', 'b']);
+    expect(codeTexts('a /\\\r\n/ std::sort\r\nb')).toEqual(['a', 'b']);
+  });
+
+  it('continues a string over a splice, with LF and with CRLF', () => {
+    const lf = code('puts("a\\', 'b"); std::sort(x, y); // "');
+    const expected = ['puts', '(', ')', ';', 'std', '::', 'sort', '(', 'x', ',', 'y', ')', ';'];
+    expect(codeTexts(lf)).toEqual(expected);
+    expect(codeTexts(lf.replaceAll('\n', '\r\n'))).toEqual(expected);
+  });
+
+  it('joins a string prefix and its quote', () => {
+    expect(codeTexts(code('u\\', '8"std::sort" R\\', '"(std::sort " )" x'))).toEqual(['x']);
+  });
+
+  it('does not splice inside a raw string, and finds its end', () => {
+    const source = code('auto s = R"x(a\\', ')x\\', '" b)x"; std::sort(p, q);');
+    const tokens = tokenize(source);
+    expect(tokens.find((t) => t.kind === 'literal')?.text).toBe('R"x(a\\\n)x\\\n" b)x"');
+    expect(tokens.find((t) => t.text === 'sort')?.line).toBe(3);
+  });
+
+  it('keeps a directive going over a splice in the middle of a name', () => {
+    const tokens = tokenize(code('#define SORT std::so\\', 'rt', 'int x;'));
+    expect(tokens.find((t) => t.text === 'sort')).toMatchObject({ line: 1, inDirective: true });
+    expect(tokens.find((t) => t.text === 'x')).toMatchObject({ line: 3, inDirective: false });
+  });
+});
+
 describe('blankComments', () => {
   it('replaces every comment character with a space and keeps every newline (D15)', () => {
     const line = '// std::sort is fine here';
@@ -142,5 +201,28 @@ describe('blankComments', () => {
 
   it('keeps CRLF line ends as they are', () => {
     expect(blankComments('a; // x\r\nb;\r\n')).toBe('a;     \r\nb;\r\n');
+  });
+});
+
+describe('blankComments: line splices', () => {
+  it('blanks a comment whose opener is split, and moves no line (D15)', () => {
+    expect(blankComments(code('a; /\\', '/ x', 'b; /\\', '* y *\\', '/ c;'))).toBe(
+      code('a;   ', '   ', 'b;   ', '      ', '  c;'),
+    );
+  });
+
+  it('keeps a splice that is code, and a splice in a string', () => {
+    const source = code('std::so\\', 'rt(a, b); puts("x\\', '// y");');
+    expect(blankComments(source)).toBe(source);
+  });
+
+  it('blanks a comment after a string continued by a CRLF splice', () => {
+    expect(blankComments('puts("a\\\r\nb"); // hi\r\nc;\r\n')).toBe(
+      'puts("a\\\r\nb");      \r\nc;\r\n',
+    );
+  });
+
+  it('keeps a splice that follows a block comment', () => {
+    expect(blankComments(code('/* x */\\', 'a;'))).toBe(code('       \\', 'a;'));
   });
 });

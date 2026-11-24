@@ -37,7 +37,9 @@
       "Bash(git push -f *)",
       "Bash(git push origin main)",
       "Bash(git push origin main *)",
-      "Bash(npm audit fix --force *)"
+      "Bash(npm audit fix --force *)",
+      "Edit(./eval/dev/**)",
+      "Write(./eval/dev/**)"
     ]
   }
 }
