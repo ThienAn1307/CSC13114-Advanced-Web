@@ -65,9 +65,11 @@ function completeWithin(model: Model, prompt: string, timeoutMs: number): Promis
   const timedOut = new Promise<never>((_resolve, reject) => {
     controller.signal.addEventListener('abort', () => reject(new Timeout()), { once: true });
   });
-  return Promise.race([model.complete({ prompt, signal: controller.signal }), timedOut]).finally(
-    () => clearTimeout(timer),
+  // Called inside the chain: a complete() that throws becomes a rejection, so finally still runs.
+  const answered = Promise.resolve().then(() =>
+    model.complete({ prompt, signal: controller.signal }),
   );
+  return Promise.race([answered, timedOut]).finally(() => clearTimeout(timer));
 }
 
 async function askModel(
