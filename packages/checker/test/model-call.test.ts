@@ -3,7 +3,7 @@
 
 import { describe, expect, it } from 'vitest';
 import { check, type CheckInput } from '../src/check.ts';
-import { fakeModel } from './fake-model.ts';
+import { fakeModel, never } from './fake-model.ts';
 
 const code = (...lines: string[]) => lines.join('\n') + '\n';
 const statement =
@@ -175,7 +175,7 @@ describe('the evidence the model gives (D15)', () => {
 
 describe('the call log', () => {
   it('has one row per call with the request id, model, tokens, time and outcome', async () => {
-    const { calls } = await ask(answer('pass'));
+    const { calls, prompts } = await ask(answer('pass'));
     expect(calls).toEqual([
       {
         constraintId: 'C2',
@@ -185,7 +185,36 @@ describe('the call log', () => {
         tokensOut: 0,
         ms: expect.any(Number) as unknown,
         outcome: 'answered',
+        prompt: prompts[0],
       },
+    ]);
+  });
+
+  // PA#3 criterion 4: "the prompts in your call log show" that only the statement, the constraint and
+  // the code without comments and identity were sent.
+  it('keeps the prompt that was sent, without comments or identity', async () => {
+    const { calls } = await ask(answer('pass'));
+    const prompt = calls[0]?.prompt ?? '';
+    expect(prompt).toContain(GROW.text);
+    expect(prompt).not.toContain('first block');
+    expect(prompt).not.toContain(identity.name);
+    expect(prompt).not.toContain(identity.email);
+    expect(prompt).not.toContain(identity.studentId);
+  });
+
+  it('keeps the prompt of a call that failed or ran out of time', async () => {
+    const failing = fakeModel(() => Promise.reject(new Error('HTTP 503')));
+    const slow = fakeModel(never);
+    const ask2 = (model: typeof slow, limit: number) =>
+      check(
+        { statement, constraints: [GROW], source, identity },
+        { modelOff: false, model, timeoutMs: limit },
+      );
+    expect((await ask2(failing, 2000)).calls).toMatchObject([
+      { outcome: 'model-error', prompt: failing.prompts[0] },
+    ]);
+    expect((await ask2(slow, 50)).calls).toMatchObject([
+      { outcome: 'timeout', prompt: slow.prompts[0] },
     ]);
   });
 });
