@@ -72,6 +72,8 @@ The TA's class page lists constraint proposals and their evidence. A TA explicit
 
 The worker integration boundary is `PostgresReviewQueue.storeProposals(submissionId, proposals)` from `@leetkob/db`: it accepts proposals only after `judge_results` records `AC`, validates evidence against the stored source, and deduplicates by submission and constraint. The judge/check worker still needs to write `judge_results` and the per-test verdicts in `judge_test_results`, then call this boundary for Accepted submissions; this branch does not claim that the queue-to-model pipeline is already connected. The student sees only their own overall and per-test verdicts, never the test input or expected output.
 
+For the worker integration, `judge()` on `feat/pa3-judge-sandbox` returns an overall `status` and an ordered `tests` array; persist each test status with a one-based `position` in `judge_test_results`. The checker `check()` on `feat/checker-model-call` returns `verdicts` in the shape accepted by `storeProposals`; call it only after an `AC` result is stored, then pass its `verdicts` to the queue. Keep the checker call log separately as required by D14. These interfaces live on separate branches and require integration and an end-to-end test when the worker is available.
+
 ## Layout
 
 npm workspaces (decisions.md, D2):
