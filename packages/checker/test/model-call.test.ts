@@ -3,6 +3,7 @@
 
 import { describe, expect, it } from 'vitest';
 import { check, type CheckInput } from '../src/check.ts';
+import type { Model } from '../src/model.ts';
 import { fakeModel } from './fake-model.ts';
 
 const code = (...lines: string[]) => lines.join('\n') + '\n';
@@ -158,6 +159,33 @@ describe('the evidence the model gives (D15)', () => {
     expect(calls[0]).toMatchObject({ outcome: 'evidence-mismatch' });
   });
 
+  it.each([
+    ['a blank line', 1, ''],
+    ['a line that was only a comment', 2, '   '],
+    ['a white-space text on a blank line', 1, ' \t'],
+  ])('makes the pair unsure when the only evidence is %s', async (_case, line, text) => {
+    const { verdicts, calls } = await ask(answer('violation', [{ line, text }]), {
+      source: code('', '// free it later', 'int main() {}'),
+    });
+    expect(verdicts[0]).toMatchObject({
+      verdict: 'unsure',
+      evidence: [],
+      unsureCause: 'evidence-mismatch',
+    });
+    expect(calls[0]).toMatchObject({ outcome: 'evidence-mismatch' });
+  });
+
+  it('matches a line whose lone CR the prompt shows as a space, and writes the original line', async () => {
+    const { verdicts } = await ask(
+      answer('violation', [{ line: 1, text: 'const char* s = R"(a b)";' }]),
+      { source: 'const char* s = R"(a\rb)";\r\nint main() {}\r\n' },
+    );
+    expect(verdicts[0]).toMatchObject({
+      verdict: 'violation',
+      evidence: [{ line: 1, text: 'const char* s = R"(a\rb)";' }],
+    });
+  });
+
   it("keeps the model's own unsure, with its reason and cause model-unsure", async () => {
     const { verdicts } = await ask(answer('unsure'));
     expect(verdicts).toEqual([
@@ -187,5 +215,33 @@ describe('the call log', () => {
         outcome: 'answered',
       },
     ]);
+  });
+});
+
+describe('a model that fails in an unusual way costs its pair only (D14)', () => {
+  const failing = (complete: Model['complete']) =>
+    check(
+      { statement, constraints: [GROW], source },
+      { modelOff: false, model: { name: 'failing', complete }, timeoutMs },
+    );
+
+  it.each([
+    ['null', null, 'null'],
+    ['a string', 'no route', 'no route'],
+  ])('when it rejects with %s', async (_case, reason, error) => {
+    const rejected = Promise.resolve().then(() => {
+      throw reason as unknown as Error;
+    });
+    const { verdicts, calls } = await failing(() => rejected);
+    expect(verdicts[0]).toMatchObject({ verdict: 'unsure', unsureCause: 'model-error' });
+    expect(calls[0]).toMatchObject({ outcome: 'model-error', error });
+  });
+
+  it('when it throws before it returns a promise', async () => {
+    const { verdicts, calls } = await failing(() => {
+      throw new Error('bad request');
+    });
+    expect(verdicts[0]).toMatchObject({ verdict: 'unsure', unsureCause: 'model-error' });
+    expect(calls[0]).toMatchObject({ outcome: 'model-error', error: 'bad request' });
   });
 });
