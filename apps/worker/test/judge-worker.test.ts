@@ -100,7 +100,7 @@ describe('judgeNext', () => {
 
   it('judges the source against the lab tests, in order, with the lab limits', async () => {
     await submit();
-    const judge = vi.fn((_request: JudgeRequest) => Promise.resolve(result('AC', 'AC')));
+    const judge = vi.fn<JudgeWorkerOptions['judge']>(() => Promise.resolve(result('AC', 'AC')));
     expect(await judgeNext(worker(judge))).toBe('judged');
     expect(judge.mock.calls).toEqual([
       [
@@ -149,18 +149,12 @@ describe('judgeNext', () => {
 
   it('stores one result when a worker stops mid-judging and comes back after another took over', async () => {
     const id = await submit();
-    let wake!: (value: JudgeResult) => void;
-    const started = Promise.withResolvers<void>();
-    const stalled = judgeNext(
-      worker(() => {
-        started.resolve();
-        return new Promise((resolve) => (wake = resolve));
-      }),
-    );
-    await started.promise;
+    let wake: ((value: JudgeResult) => void) | undefined;
+    const stalled = judgeNext(worker(() => new Promise((resolve) => (wake = resolve))));
+    await vi.waitFor(() => expect(wake).toBeDefined());
     await expireLease(id);
     expect(await judgeNext(worker(() => Promise.resolve(result('AC', 'AC'))))).toBe('judged');
-    wake(result('WA', 'WA'));
+    wake?.(result('WA', 'WA'));
     expect(await stalled).toBe('lost');
     expect(await database.db.select().from(judgeResults)).toMatchObject([{ status: 'AC' }]);
     expect(await database.db.select().from(checkJobs)).toHaveLength(1);
