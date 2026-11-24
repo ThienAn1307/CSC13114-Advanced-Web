@@ -100,7 +100,8 @@ async function askModel(
     };
     if (error instanceof Timeout) return { verdict: unsure(constraint.id, 'timeout'), call };
     // D14: a failed call (HTTP error, no connection) costs this pair only.
-    const failed: ModelCall = { ...call, outcome: 'model-error', error: (error as Error).message };
+    const message = error instanceof Error ? error.message : String(error);
+    const failed: ModelCall = { ...call, outcome: 'model-error', error: message };
     return { verdict: unsure(constraint.id, 'model-error'), call: failed };
   }
 
@@ -122,8 +123,9 @@ async function askModel(
     };
 
   // D15: each entry must match the line the model was shown; only then is the original line written.
+  // A blank line shows nothing, so it is no evidence even when it matches.
   const shownAsPrompted = (e: { line: number; text: string }) =>
-    lines[e.line - 1]?.trim() === e.text.trim();
+    e.text.trim() !== '' && lines[e.line - 1]?.trim() === e.text.trim();
   const noEvidenceForViolation = answer.verdict === 'violation' && answer.evidence.length === 0;
   if (noEvidenceForViolation || !answer.evidence.every(shownAsPrompted)) {
     return {
