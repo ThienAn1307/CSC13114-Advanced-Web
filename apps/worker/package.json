@@ -1,0 +1,18 @@
+{
+  "name": "@leetkob/worker",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json",
+    "build": "tsc -p tsconfig.build.json",
+    "start:judge": "node dist/apps/worker/src/judge.js"
+  },
+  "dependencies": {
+    "@leetkob/db": "0.0.0",
+    "@leetkob/judge": "0.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.19.2"
+  }
+}

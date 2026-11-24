@@ -2,7 +2,14 @@ import { randomUUID } from 'node:crypto';
 import { and, asc, eq, gte, inArray, lt, or, sql } from 'drizzle-orm';
 import { PostgresReviewQueue } from './review-queue.js';
 import type { ReviewProposal } from './review-queue.js';
-import { checkJobs, judgeResults, judgeTestResults, submissions } from './schema.js';
+import {
+  checkJobs,
+  judgeResults,
+  judgeTestResults,
+  labTestCases,
+  labs,
+  submissions,
+} from './schema.js';
 import type { Database } from './submission-data.js';
 
 /** A row claimed this many times is not tried again (D11). */
@@ -21,6 +28,15 @@ export interface JudgeOutcome {
   status: 'AC' | 'WA' | 'TLE' | 'MLE' | 'RE' | 'CE';
   /** One status per test, in the lab's order; empty for a compile error. */
   tests: ('AC' | 'WA' | 'TLE' | 'MLE' | 'RE')[];
+}
+
+/** What the judge needs to judge one submission: never who sent it. */
+export interface JudgeTask {
+  source: string;
+  /** In the lab's order. */
+  cases: { input: string; expectedOutput: string }[];
+  cpuSeconds: number;
+  memoryMb: number;
 }
 
 /** `lost`: another worker holds the row now, and nothing was written. */
@@ -74,6 +90,27 @@ export class JudgeQueue {
         .returning({ attempts: t.attempts });
       return { submissionId: next.id, token, attempts: row!.attempts };
     });
+  }
+
+  async task(submissionId: string): Promise<JudgeTask> {
+    const [found] = await this.db
+      .select({
+        labId: labs.id,
+        source: submissions.source,
+        cpuSeconds: labs.cpuLimitSeconds,
+        memoryMb: labs.memoryLimitMb,
+      })
+      .from(submissions)
+      .innerJoin(labs, eq(labs.id, submissions.labId))
+      .where(eq(submissions.id, submissionId));
+    if (!found) throw new Error('Submission not found.');
+    const { labId, ...task } = found;
+    const cases = await this.db
+      .select({ input: labTestCases.input, expectedOutput: labTestCases.expectedOutput })
+      .from(labTestCases)
+      .where(eq(labTestCases.labId, labId))
+      .orderBy(asc(labTestCases.position));
+    return { ...task, cases };
   }
 
   /** Extends the lease; false when another worker holds the row. */
