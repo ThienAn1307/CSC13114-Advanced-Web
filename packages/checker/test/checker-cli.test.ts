@@ -167,6 +167,8 @@ describe('writePredictions with a model', () => {
       tokensOut: 0,
       ms: expect.any(Number) as unknown,
       outcome: 'answered',
+      // The prompt that was sent, so a reader can check what reached the model (PA#3 criterion 4).
+      prompt: expect.stringContaining('Sort with a merge sort you wrote yourself.') as unknown,
     };
     expect(readJsonl(calls)).toEqual([
       { solution: 'sorting/s01', requestId: 'fake-1', ...row },
