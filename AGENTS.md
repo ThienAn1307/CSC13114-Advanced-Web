@@ -4,7 +4,7 @@ Rules for every assistant, and every person, working in this repo. A line is add
 
 ## Stack
 
-TypeScript, strict, ES modules, in npm workspaces (D1, D2). NestJS 12, PostgreSQL 16 with Drizzle, BullMQ on Redis, Vitest with `unplugin-swc` (D3). Model: Gemini Flash-Lite, free tier (D8). Nothing else without asking.
+TypeScript, strict, ES modules, in npm workspaces (D1, D2). NestJS 12, PostgreSQL 16 with Drizzle (the queue is a PostgreSQL table, D11), Vitest with `unplugin-swc` (D3). Model: Gemini Flash-Lite, free tier (D8). Nothing else without asking.
 
 - Tests use Vitest. Do not add Jest. [Jest could not load NestJS 12, which ships only as ES modules, without an experimental Node flag; see decisions.md D3.]
 - Keep `typescript` at `~6.0` until typescript-eslint supports 7. [TypeScript 7.0 is out, but typescript-eslint 8.72 accepts only `<6.1.0`, so installing the latest breaks lint; see the pin in package.json, commit 153240b.]

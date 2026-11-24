@@ -1,10 +1,9 @@
 import type { SubmissionQueue } from './submissions/submission-data.js';
 
 /**
- * PA#2 has no judge worker and no Redis (decisions.md, "Out of scope for PA#2"), so nothing
- * consumes a queue yet. Every submission is already stored as `queued`, which is the outbox
- * (D6, contract section 4.7): the sweep added with the BullMQ queue in PA#3 enqueues these rows
- * through `listQueuedSubmissions`. Enqueueing here therefore does nothing and never fails.
+ * The submission row is the job (decisions.md D11): the judge worker claims `queued` rows from
+ * PostgreSQL itself (`JudgeQueue` in packages/db), so the API has nothing to enqueue and this
+ * never fails. The contract's queue boundary (section 4.7) stays, for the tests that replace it.
  */
 export const outboxOnlyQueue: SubmissionQueue = {
   enqueue: () => Promise.resolve(),

@@ -119,20 +119,39 @@ export const submissions = pgTable(
       .references(() => users.id),
     source: text('source').notNull(),
     sizeBytes: integer('size_bytes').notNull(),
-    // Only 'queued' exists in PA#2; judging states arrive with the worker in PA#3.
-    status: text('status', { enum: ['queued'] })
+    // The judge status (D11). The verdict itself (AC, WA, ...) is in judge_results.
+    status: text('status', { enum: ['queued', 'judging', 'judged', 'failed'] })
       .notNull()
       .default('queued'),
     receivedAt: timestamp('received_at', ms).notNull(),
+    attempts: integer('attempts').notNull().default(0),
+    /** While judging: when another worker may claim the row again. */
+    leaseUntil: timestamp('lease_until', ms),
+    /** The worker that holds the row; null when it gave up and the row waits for a retry. */
+    claimToken: uuid('claim_token'),
+    /** For the TA only: why the row could not be judged. */
+    failureCause: text('failure_cause'),
   },
   (t) => [
     check('submissions_size_check', sql`${t.sizeBytes} between 1 and 65536`),
-    check('submissions_status_check', sql`${t.status} in ('queued')`),
+    check(
+      'submissions_status_check',
+      sql`${t.status} in ('queued', 'judging', 'judged', 'failed')`,
+    ),
+    check(
+      'submissions_lease_check',
+      sql`(${t.status} = 'judging') = (${t.leaseUntil} is not null)`,
+    ),
+    check('submissions_token_check', sql`${t.claimToken} is null or ${t.status} = 'judging'`),
+    check(
+      'submissions_failure_check',
+      sql`(${t.status} = 'failed') = (${t.failureCause} is not null)`,
+    ),
     index('submissions_lab_student_idx').on(t.labId, t.studentId, t.receivedAt),
-    // The outbox sweep reads queued rows in (receivedAt, id) order.
-    index('submissions_queued_idx')
+    // The claim (D11) reads unfinished rows, oldest first. Finished rows are not in the index.
+    index('submissions_claimable_idx')
       .on(t.receivedAt, t.id)
-      .where(sql`${t.status} = 'queued'`),
+      .where(sql`${t.status} in ('queued', 'judging')`),
   ],
 );
 
@@ -165,6 +184,39 @@ export const judgeTestResults = pgTable(
     primaryKey({ columns: [t.submissionId, t.position] }),
     check('judge_test_results_position_check', sql`${t.position} > 0`),
     check('judge_test_results_status_check', sql`${t.status} in ('AC', 'WA', 'TLE', 'MLE', 'RE')`),
+  ],
+);
+
+/** One row per Accepted submission, claimed by the check worker (D12). Never shown to the student. */
+export const checkJobs = pgTable(
+  'check_jobs',
+  {
+    submissionId: uuid('submission_id')
+      .primaryKey()
+      .references(() => submissions.id),
+    status: text('status', { enum: ['queued', 'checking', 'done', 'failed'] })
+      .notNull()
+      .default('queued'),
+    createdAt: timestamp('created_at', ms).notNull().defaultNow(),
+    attempts: integer('attempts').notNull().default(0),
+    leaseUntil: timestamp('lease_until', ms),
+    claimToken: uuid('claim_token'),
+    failureCause: text('failure_cause'),
+  },
+  (t) => [
+    check('check_jobs_status_check', sql`${t.status} in ('queued', 'checking', 'done', 'failed')`),
+    check(
+      'check_jobs_lease_check',
+      sql`(${t.status} = 'checking') = (${t.leaseUntil} is not null)`,
+    ),
+    check('check_jobs_token_check', sql`${t.claimToken} is null or ${t.status} = 'checking'`),
+    check(
+      'check_jobs_failure_check',
+      sql`(${t.status} = 'failed') = (${t.failureCause} is not null)`,
+    ),
+    index('check_jobs_claimable_idx')
+      .on(t.createdAt, t.submissionId)
+      .where(sql`${t.status} in ('queued', 'checking')`),
   ],
 );
 
