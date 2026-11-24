@@ -14,6 +14,8 @@ export interface ModelResponse {
   model: string;
   tokensIn: number;
   tokensOut: number;
+  /** List price of this call in whole nano-USD; absent when the model's price was not checked. */
+  costNanoUsd?: number;
 }
 
 export interface Model {

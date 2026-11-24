@@ -1,0 +1,47 @@
+{"solution":"binary-search/s01","constraintId":"C2","requestId":"xRcEa_2uGuSM694PrNm90A8","model":"gemini-3.1-flash-lite","tokensIn":796,"tokensOut":172,"ms":1516,"outcome":"answered"}
+{"solution":"binary-search/s02","constraintId":"C2","requestId":"yRcEa83oL82L694PmK3C8QU","model":"gemini-3.1-flash-lite","tokensIn":837,"tokensOut":165,"ms":4275,"outcome":"answered"}
+{"solution":"binary-search/s03","constraintId":"C2","requestId":"zhcEa9PKEtqE4t4Pjoa7wQc","model":"gemini-3.1-flash-lite","tokensIn":863,"tokensOut":175,"ms":4720,"outcome":"answered"}
+{"solution":"binary-search/s04","constraintId":"C2","requestId":"0hcEa47BMN3XqfkPvvGMmAg","model":"gemini-3.1-flash-lite","tokensIn":732,"tokensOut":91,"ms":4151,"outcome":"answered"}
+{"solution":"binary-search/s05","constraintId":"C2","model":"gemini-3.1-flash-lite","ms":5458,"outcome":"model-error","error":"Gemini HTTP 503: This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later."}
+{"solution":"binary-search/s06","constraintId":"C2","requestId":"2xcEa8LCMdqA694PuYWG-QE","model":"gemini-3.1-flash-lite","tokensIn":838,"tokensOut":129,"ms":4280,"outcome":"answered"}
+{"solution":"binary-search/s07","constraintId":"C2","requestId":"4BcEa8ieE96V3LUPwZesgAs","model":"gemini-3.1-flash-lite","tokensIn":782,"tokensOut":133,"ms":3889,"outcome":"answered"}
+{"solution":"dynamic-array/s01","constraintId":"C2","requestId":"5BcEa8nuMICw0r4PqazV2AI","model":"gemini-3.1-flash-lite","tokensIn":906,"tokensOut":160,"ms":4440,"outcome":"answered"}
+{"solution":"dynamic-array/s01","constraintId":"C3","requestId":"6RcEa-DSE-3MmNMPjKewoA0","model":"gemini-3.1-flash-lite","tokensIn":896,"tokensOut":110,"ms":4593,"outcome":"answered"}
+{"solution":"dynamic-array/s02","constraintId":"C2","requestId":"7RcEa7G3MpD7juMP57_niQ4","model":"gemini-3.1-flash-lite","tokensIn":745,"tokensOut":168,"ms":4597,"outcome":"answered"}
+{"solution":"dynamic-array/s02","constraintId":"C3","requestId":"8hcEa7XaFOPo4t4Pp4vAsAs","model":"gemini-3.1-flash-lite","tokensIn":735,"tokensOut":74,"ms":4559,"outcome":"answered"}
+{"solution":"dynamic-array/s03","constraintId":"C2","requestId":"9hcEa9mrM_vC694Ppv_o0Q8","model":"gemini-3.1-flash-lite","tokensIn":897,"tokensOut":129,"ms":4282,"outcome":"answered"}
+{"solution":"dynamic-array/s03","constraintId":"C3","requestId":"-xcEa-3wFNnm4t4Ppp-pIQ","model":"gemini-3.1-flash-lite","tokensIn":887,"tokensOut":114,"ms":4597,"outcome":"answered"}
+{"solution":"dynamic-array/s04","constraintId":"C2","requestId":"_xcEa6SoNIS70r4PgPCA2As","model":"gemini-3.1-flash-lite","tokensIn":640,"tokensOut":58,"ms":4484,"outcome":"answered"}
+{"solution":"dynamic-array/s04","constraintId":"C3","requestId":"BBgEa_qbFsDq694Pm-bAqA8","model":"gemini-3.1-flash-lite","tokensIn":630,"tokensOut":71,"ms":4392,"outcome":"answered"}
+{"solution":"dynamic-array/s05","constraintId":"C2","model":"gemini-3.1-flash-lite","ms":18334,"outcome":"model-error","error":"Gemini HTTP 503: This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later."}
+{"solution":"dynamic-array/s05","constraintId":"C3","requestId":"FxgEa4q4NK7Lv_gPwa_q2Qs","model":"gemini-3.1-flash-lite","tokensIn":651,"tokensOut":87,"ms":1147,"outcome":"answered"}
+{"solution":"dynamic-array/s06","constraintId":"C2","model":"gemini-3.1-flash-lite","ms":6690,"outcome":"model-error","error":"Gemini HTTP 503: This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later."}
+{"solution":"dynamic-array/s06","constraintId":"C3","requestId":"IBgEa7rTNeuU3LUPqfDQqAI","model":"gemini-3.1-flash-lite","tokensIn":682,"tokensOut":70,"ms":2300,"outcome":"answered"}
+{"solution":"dynamic-array/s07","constraintId":"C2","requestId":"JRgEa-bnFoej694P0qqyuQI","model":"gemini-3.1-flash-lite","tokensIn":775,"tokensOut":141,"ms":11159,"outcome":"answered"}
+{"solution":"dynamic-array/s07","constraintId":"C3","requestId":"LRgEa9_SCZ3-4-EPnNvvqQU","model":"gemini-3.1-flash-lite","tokensIn":765,"tokensOut":79,"ms":5571,"outcome":"answered"}
+{"solution":"dynamic-array/s08","constraintId":"C2","requestId":"MhgEa8bPK5rLv_gP-f7yoA8","model":"gemini-3.1-flash-lite","tokensIn":655,"tokensOut":81,"ms":1141,"outcome":"answered"}
+{"solution":"dynamic-array/s08","constraintId":"C3","requestId":"NxgEa_fHDpP4694PiZjz0Q8","model":"gemini-3.1-flash-lite","tokensIn":645,"tokensOut":49,"ms":4457,"outcome":"answered"}
+{"solution":"gcd-euclid/s01","constraintId":"C2","requestId":"OxgEa7uHLOr5v_gP-tiVwQ8","model":"gemini-3.1-flash-lite","tokensIn":673,"tokensOut":143,"ms":4559,"outcome":"answered"}
+{"solution":"gcd-euclid/s02","constraintId":"C2","requestId":"QBgEa_D0DuGL694PgMzGmQ0","model":"gemini-3.1-flash-lite","tokensIn":700,"tokensOut":61,"ms":4427,"outcome":"answered"}
+{"solution":"gcd-euclid/s03","constraintId":"C2","requestId":"RBgEa5eLL9Se3LUP45jwiQ8","model":"gemini-3.1-flash-lite","tokensIn":670,"tokensOut":122,"ms":6021,"outcome":"answered"}
+{"solution":"gcd-euclid/s04","constraintId":"C2","requestId":"SRgEa7qtEMe3694Pw7D7EA","model":"gemini-3.1-flash-lite","tokensIn":588,"tokensOut":84,"ms":2996,"outcome":"answered"}
+{"solution":"gcd-euclid/s05","constraintId":"C2","requestId":"TRgEa_T5L-CD3LUP--qC6A4","model":"gemini-3.1-flash-lite","tokensIn":651,"tokensOut":90,"ms":4860,"outcome":"answered"}
+{"solution":"gcd-euclid/s06","constraintId":"C2","requestId":"UhgEa5CbEafZjNAPhtqAwAM","model":"gemini-3.1-flash-lite","tokensIn":677,"tokensOut":139,"ms":8417,"outcome":"answered"}
+{"solution":"gcd-euclid/s07","constraintId":"C2","requestId":"VxgEa4XkJMvfg8UPpuLokQo","model":"gemini-3.1-flash-lite","tokensIn":801,"tokensOut":129,"ms":1297,"outcome":"answered"}
+{"solution":"reverse-words/s01","constraintId":"C2","requestId":"XBgEa7D5BprFjuMPgJXJqQs","model":"gemini-3.1-flash-lite","tokensIn":626,"tokensOut":88,"ms":4544,"outcome":"answered"}
+{"solution":"reverse-words/s02","constraintId":"C2","requestId":"YBgEa_72JJbZjNAPnL300A8","model":"gemini-3.1-flash-lite","tokensIn":641,"tokensOut":172,"ms":4559,"outcome":"answered"}
+{"solution":"reverse-words/s03","constraintId":"C2","model":"gemini-3.1-flash-lite","ms":4573,"outcome":"model-error","error":"Gemini HTTP 503: This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later."}
+{"solution":"reverse-words/s04","constraintId":"C2","requestId":"aRgEa9PIJoC2z7sPtOHZiA8","model":"gemini-3.1-flash-lite","tokensIn":515,"tokensOut":91,"ms":4155,"outcome":"answered"}
+{"solution":"reverse-words/s05","constraintId":"C2","requestId":"bhgEa6nSB5Le694PopizgAE","model":"gemini-3.1-flash-lite","tokensIn":594,"tokensOut":117,"ms":4716,"outcome":"answered"}
+{"solution":"reverse-words/s06","constraintId":"C2","requestId":"chgEa-_VJ_e0juMPkLnZwQ4","model":"gemini-3.1-flash-lite","tokensIn":637,"tokensOut":134,"ms":4423,"outcome":"answered"}
+{"solution":"reverse-words/s07","constraintId":"C2","requestId":"dxgEa-6-CfPu694P6OWAwQQ","model":"gemini-3.1-flash-lite","tokensIn":586,"tokensOut":113,"ms":4619,"outcome":"answered"}
+{"solution":"reverse-words/s08","constraintId":"C2","requestId":"exgEa9CjKenA0r4PuJm28As","model":"gemini-3.1-flash-lite","tokensIn":598,"tokensOut":97,"ms":4292,"outcome":"answered"}
+{"solution":"sort-merge/s01","constraintId":"C2","requestId":"gBgEa5_rC7nWjuMPsuHf8Ao","model":"gemini-3.1-flash-lite","tokensIn":917,"tokensOut":128,"ms":4583,"outcome":"answered"}
+{"solution":"sort-merge/s02","constraintId":"C2","requestId":"hBgEa9-oKobQz7sPmrfC2Qo","model":"gemini-3.1-flash-lite","tokensIn":906,"tokensOut":106,"ms":4425,"outcome":"answered"}
+{"solution":"sort-merge/s03","constraintId":"C2","requestId":"iRgEa53oDLPTmNMPzKuLmAU","model":"gemini-3.1-flash-lite","tokensIn":844,"tokensOut":177,"ms":4729,"outcome":"answered"}
+{"solution":"sort-merge/s04","constraintId":"C2","model":"gemini-3.1-flash-lite","ms":8710,"outcome":"model-error","error":"Gemini HTTP 503: This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later."}
+{"solution":"sort-merge/s05","constraintId":"C2","requestId":"kxgEa_jwD_K8mNMPyIGbqAY","model":"gemini-3.1-flash-lite","tokensIn":754,"tokensOut":92,"ms":1144,"outcome":"answered"}
+{"solution":"sort-merge/s06","constraintId":"C2","requestId":"lxgEa5j-Ldrdg8UPjN7G0QU","model":"gemini-3.1-flash-lite","tokensIn":753,"tokensOut":129,"ms":4559,"outcome":"answered"}
+{"solution":"sort-merge/s07","constraintId":"C2","requestId":"nBgEa-njEJCgjuMP5JzE-Qo","model":"gemini-3.1-flash-lite","tokensIn":730,"tokensOut":93,"ms":5138,"outcome":"answered"}
+{"solution":"sort-merge/s08","constraintId":"C2","requestId":"oBgEa63OL6POmNMPqP6Z0Q4","model":"gemini-3.1-flash-lite","tokensIn":842,"tokensOut":99,"ms":4145,"outcome":"evidence-mismatch"}
+{"solution":"sort-merge/s09","constraintId":"C2","requestId":"pRgEa8qjEfLE3LUP6eXxsAs","model":"gemini-3.1-flash-lite","tokensIn":763,"tokensOut":118,"ms":6141,"outcome":"answered"}

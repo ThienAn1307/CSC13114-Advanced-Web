@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { writePredictions } from '../src/predict.ts';
+import { fakeModel } from './fake-model.ts';
 
 const repoRoot = join(import.meta.dirname, '..', '..', '..');
 const cli = join(repoRoot, 'packages', 'checker', 'src', 'cli.ts');
@@ -21,7 +22,12 @@ function runNode(args: string[], env: Record<string, string | undefined>): Promi
     execFile(
       process.execPath,
       args,
-      { env: { ...process.env, ...env } },
+      // A variable set to undefined is left out, so a test can run the command without it.
+      {
+        env: Object.fromEntries(
+          Object.entries({ ...process.env, ...env }).filter(([, v]) => v !== undefined),
+        ),
+      },
       (error, stdout, stderr) => {
         const code = error ? (typeof error.code === 'number' ? error.code : -1) : 0;
         resolve({ code, stdout, stderr });
@@ -114,6 +120,58 @@ describe('the checker command', () => {
     const run = await runNode([cli, '--data', smallDataset()], { MODEL_OFF: '1' });
     expect(run.code).toBe(2);
     expect(run.stderr).toContain('--out');
+  });
+
+  it('exits 2 without MODEL_OFF=1 when GEMINI_API_KEY is not set, before any call', async () => {
+    const out = join(work, 'predictions.jsonl');
+    const run = await runNode([cli, '--data', smallDataset(), '--out', out], {
+      MODEL_OFF: undefined,
+      GEMINI_API_KEY: undefined,
+    });
+    expect(run.code).toBe(2);
+    expect(run.stderr).toContain('GEMINI_API_KEY');
+  });
+});
+
+describe('writePredictions with a model', () => {
+  const PASS = JSON.stringify({ verdict: 'pass', evidence: [], reason: 'merge sort' });
+
+  it('asks the model for the semantic pairs and writes their verdicts', async () => {
+    const out = join(work, 'predictions.jsonl');
+    await writePredictions({
+      data: smallDataset(),
+      out,
+      modelOff: false,
+      model: fakeModel(() => PASS),
+      timeoutMs: 2000,
+    });
+    expect(readJsonl(out)).toEqual(
+      smallExpected.map((line) => (line.constraint === 'C2' ? { ...line, verdict: 'pass' } : line)),
+    );
+  });
+
+  it('writes the call log, one line per model call with its solution (PA#3 criterion 4)', async () => {
+    const calls = join(work, 'calls.jsonl');
+    await writePredictions({
+      data: smallDataset(),
+      out: join(work, 'p.jsonl'),
+      calls,
+      modelOff: false,
+      model: fakeModel(() => PASS),
+      timeoutMs: 2000,
+    });
+    const row = {
+      constraintId: 'C2',
+      model: 'fake-model',
+      tokensIn: 0,
+      tokensOut: 0,
+      ms: expect.any(Number) as unknown,
+      outcome: 'answered',
+    };
+    expect(readJsonl(calls)).toEqual([
+      { solution: 'sorting/s01', requestId: 'fake-1', ...row },
+      { solution: 'sorting/s02', requestId: 'fake-2', ...row },
+    ]);
   });
 });
 

@@ -7,3 +7,6 @@ notes/
 # drizzle-kit writes these snapshots itself and rewrites them on every `generate`
 packages/db/drizzle/meta/
 eval/dev/
+
+# written by eval.mjs; kept exactly as it wrote them
+eval/runs/*/summary.json

@@ -46,6 +46,8 @@ export function buildPrompt(statement: string, constraintText: string, lines: st
     'Answer with JSON only, exactly these three fields:',
     '{"verdict": "pass" | "violation" | "unsure", "evidence": [{"line": <number>, "text": "<that line>"}], "reason": "<one or two sentences>"}',
     'For a violation, evidence lists the lines that show it: the line number, and the text after "| " on that line.',
+    'Apply the constraint text exactly, including every case it says passes or does not satisfy it.',
+    'Memory that a standard library type allocates and frees for itself (std::vector, std::string and the like) is not memory the student allocated or must free.',
     'Answer "unsure" when the code does not let you decide.',
     '',
     '## Lab statement',

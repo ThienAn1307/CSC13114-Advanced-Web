@@ -84,6 +84,23 @@ describe('what the model is asked', () => {
     expect(prompt).toContain('<STUDENT_ID>');
   });
 
+  // The first real run (eval/runs/2026-11-23-gemini-3.1-flash-lite) deducted twice for memory that a
+  // library container allocated for itself, under a constraint that says a program allocating nothing
+  // passes. These two rules are general; neither names a problem.
+  it('tells the model to apply the cases the constraint text itself says pass or fail', async () => {
+    const { prompts } = await ask(answer('pass'));
+    expect(prompts[0]).toContain(
+      'Apply the constraint text exactly, including every case it says passes or does not satisfy it.',
+    );
+  });
+
+  it('tells the model that memory a library type manages for itself is not allocated by the student', async () => {
+    const { prompts } = await ask(answer('pass'));
+    expect(prompts[0]).toContain(
+      'Memory that a standard library type allocates and frees for itself (std::vector, std::string and the like) is not memory the student allocated or must free.',
+    );
+  });
+
   it('keeps every line where it was, so line N of the prompt is line N of the submission (D15)', async () => {
     const { prompts } = await ask(answer('pass'));
     const promptLines = prompts[0]!.split('\n');
