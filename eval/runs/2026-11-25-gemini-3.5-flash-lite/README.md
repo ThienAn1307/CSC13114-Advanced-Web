@@ -8,6 +8,11 @@ eval; the numbers are reported as they came out.
 - Code: commit `56ca58f` (the list price of 3.5), which includes the retries on 429 and 503, the
   call log with prompts and costs, and the two general prompt rules added after the first run
   (`gemini-3.1-flash-lite`, in `../2026-11-23-gemini-3.1-flash-lite`).
+- Later fixes to the tokenizer, the hard rules, identity, the evidence check and the client came
+  after `56ca58f`. At `fb2f5eb` the prompts rebuilt from `eval/dev` and `eval/own` equal the logged
+  ones, 47 of 47 and 6 of 6, so the fixes did not change what this run sent; the evidence check and
+  the client do behave differently for other inputs. With the model off, `fb2f5eb` still decides all
+  55 ban-list pairs of the dev set with 0 wrongful deductions.
 - Model: `gemini-3.5-flash-lite`, chosen because `gemini-3.1-flash-lite` answered HTTP 503
   ("experiencing high demand") to every call we made from 2026-11-23 23:32 until at least
   2026-11-25 00:25, when 3.5 answered 200. (The first run, 3.1 on 2026-11-23 17:42, had answered 41
