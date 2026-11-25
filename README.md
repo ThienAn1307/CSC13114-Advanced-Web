@@ -48,7 +48,42 @@ npm run build --workspace @leetkob/api
 npm start --workspace @leetkob/api           # reads DATABASE_URL, JWT_SECRET and PORT from .env
 ```
 
-`POST /v1/labs/{labId}/submissions` is specified in [`docs/contract/post-lab-submissions.md`](docs/contract/post-lab-submissions.md). `POST /v1/auth/login` accepts an email and password and returns a one-hour bearer token. The other D17 routes list and create classes and labs, assign TAs and students, and list a student's own submission statuses. Hidden test input and output are returned to the TA only. The judge worker is separate work: until it is connected, submissions remain `queued`.
+`POST /v1/labs/{labId}/submissions` is specified in [`docs/contract/post-lab-submissions.md`](docs/contract/post-lab-submissions.md). `POST /v1/auth/login` accepts an email and password and returns a one-hour bearer token. The other D17 routes list and create classes and labs, assign TAs and students, and list a student's own submission statuses. Hidden test input and output are returned to the TA only. Submissions stay `queued` until the judge worker runs (next section).
+
+## Run the workers
+
+Two processes from one workspace (decisions.md D12). Both need `DATABASE_URL`, and neither reads a `.env` file itself.
+
+```bash
+npm run build --workspace @leetkob/worker
+JUDGE_IMAGE=$(docker build -q sandbox/image) npm run start:judge --workspace @leetkob/worker   # needs Docker; refuses to start with a model key
+MODEL_OFF=1 npm run start:check --workspace @leetkob/worker                                    # refuses to start with DOCKER_HOST
+```
+
+Without `MODEL_OFF=1` the check worker needs `GEMINI_API_KEY`; `GEMINI_MODEL` and `MAX_MODEL_CALLS_PER_LAB` (default 200) are optional. Run one check worker only: the request rate is kept per process (D8).
+
+## Deployment
+
+One VM with Docker and the compose plugin (decisions.md D16). [`deploy/compose.prod.yml`](deploy/compose.prod.yml) runs Caddy (the web app, and `/v1` to the API), the API, both workers and PostgreSQL; only ports 80 and 443 are published. The VM needs no Node.
+
+On the VM, in a clone of this repository, write `deploy/.env` (git ignores it) and give it `chmod 600`:
+
+| Variable                                               | Value                                                                             |
+| ------------------------------------------------------ | --------------------------------------------------------------------------------- |
+| `SITE_ADDRESS`                                         | the VM's DNS name; Caddy gets its certificate. Sign-in and submitting need HTTPS. |
+| `POSTGRES_PASSWORD`                                    | `openssl rand -hex 32` (hex only, it goes in a URL; set once, before first start) |
+| `JWT_SECRET`                                           | `openssl rand -hex 32`                                                            |
+| `GEMINI_API_KEY`                                       | the deployment's own free-tier key (D8); only the check service gets it           |
+| `GEMINI_MODEL`, `MAX_MODEL_CALLS_PER_LAB`, `MODEL_OFF` | optional, as above                                                                |
+
+```bash
+deploy/up.sh          # builds, checks the compose file, migrates, starts; run it again after git pull
+read -rs -p 'Admin password: ' p && printf '%s\n' "$p" | docker exec -i leetkob-prod-api-1 \
+  node apps/api/dist/apps/api/src/bootstrap-admin-cli.js admin@example.test 'Admin'; unset p
+docker logs leetkob-prod-judge-1   # or -check-1, -api-1
+```
+
+`up.sh` stops if a service other than `check` has a model key, a service other than `judge` has the Docker socket, or a service other than `web` publishes a port ([`deploy/check-compose.mjs`](deploy/check-compose.mjs)). Other `docker compose` commands need `--file deploy/compose.prod.yml` and the variables `JUDGE_IMAGE` and `DOCKER_GID`, which `up.sh` sets.
 
 ## Initial administrator and web app
 
