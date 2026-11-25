@@ -133,6 +133,45 @@ describe('the checker command', () => {
   });
 });
 
+describe('the checker command, given a GEMINI_API_KEY with white space or control characters', () => {
+  // Ban lists only, so no model call is ever made, whatever the command does with the key.
+  const runWithKey = (key: string) => {
+    const data = smallDataset();
+    writeFileSync(
+      join(data, 'problems', 'sorting', 'constraints.json'),
+      JSON.stringify([
+        { id: 'C1', text: 'Do not call a library sort: `std::sort`, `qsort`.', deduction: 3 },
+      ]),
+    );
+    return runNode([cli, '--data', data, '--out', join(work, 'p.jsonl')], {
+      MODEL_OFF: undefined,
+      GEMINI_API_KEY: key,
+    });
+  };
+
+  it.each([
+    ['a line break', 'fakekeyone\nfakekeytwo'],
+    ['a control character', 'fakekeyone\u0001fakekeytwo'],
+    ['a letter outside ASCII', 'fakekeyone\u1ec5fakekeytwo'],
+  ])('exits 2 on %s inside the key, and never prints the key', async (_case, key) => {
+    const run = await runWithKey(key);
+    expect(run.code).toBe(2);
+    expect(run.stderr).toContain('GEMINI_API_KEY');
+    expect(run.stdout + run.stderr).not.toContain('fakekey');
+  });
+
+  it('treats a key of white space only as not set', async () => {
+    const run = await runWithKey(' \r\n');
+    expect(run.code).toBe(2);
+    expect(run.stderr).toContain('GEMINI_API_KEY is not set');
+  });
+
+  it('accepts a key that ends with a line break, as a pasted key often does', async () => {
+    const run = await runWithKey('fakekeyone\r\n');
+    expect(run.code, run.stderr).toBe(0);
+  });
+});
+
 describe('writePredictions with a model', () => {
   const PASS = JSON.stringify({ verdict: 'pass', evidence: [], reason: 'merge sort' });
 
@@ -167,6 +206,8 @@ describe('writePredictions with a model', () => {
       tokensOut: 0,
       ms: expect.any(Number) as unknown,
       outcome: 'answered',
+      // The prompt that was sent, so a reader can check what reached the model (PA#3 criterion 4).
+      prompt: expect.stringContaining('Sort with a merge sort you wrote yourself.') as unknown,
     };
     expect(readJsonl(calls)).toEqual([
       { solution: 'sorting/s01', requestId: 'fake-1', ...row },

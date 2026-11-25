@@ -43,6 +43,8 @@ export interface ModelCall {
   /** List price of the call in whole nano-USD (D14); the free tier is billed $0. */
   costNanoUsd?: number;
   ms: number;
+  /** What was sent: the statement, one constraint, and the code without comments and identity (D14). */
+  prompt: string;
   outcome: 'answered' | 'bad-schema' | 'evidence-mismatch' | 'timeout' | 'model-error';
   /** Why a call failed (HTTP status, network), for the team; never shown to the student. */
   error?: string;
@@ -71,9 +73,11 @@ function completeWithin(model: Model, prompt: string, timeoutMs: number): Promis
   const timedOut = new Promise<never>((_resolve, reject) => {
     controller.signal.addEventListener('abort', () => reject(new Timeout()), { once: true });
   });
-  return Promise.race([model.complete({ prompt, signal: controller.signal }), timedOut]).finally(
-    () => clearTimeout(timer),
+  // Called inside the chain: a complete() that throws becomes a rejection, so finally still runs.
+  const answered = Promise.resolve().then(() =>
+    model.complete({ prompt, signal: controller.signal }),
   );
+  return Promise.race([answered, timedOut]).finally(() => clearTimeout(timer));
 }
 
 async function askModel(
@@ -94,11 +98,13 @@ async function askModel(
       constraintId: constraint.id,
       model: model.name,
       ms: ms(),
+      prompt,
       outcome: 'timeout',
     };
     if (error instanceof Timeout) return { verdict: unsure(constraint.id, 'timeout'), call };
     // D14: a failed call (HTTP error, no connection) costs this pair only.
-    const failed: ModelCall = { ...call, outcome: 'model-error', error: (error as Error).message };
+    const message = error instanceof Error ? error.message : String(error);
+    const failed: ModelCall = { ...call, outcome: 'model-error', error: message };
     return { verdict: unsure(constraint.id, 'model-error'), call: failed };
   }
 
@@ -110,6 +116,7 @@ async function askModel(
     tokensOut: response.tokensOut,
     ...(response.costNanoUsd === undefined ? {} : { costNanoUsd: response.costNanoUsd }),
     ms: ms(),
+    prompt,
     outcome: 'answered',
   };
   const answer = parseModelAnswer(response.text);
@@ -120,8 +127,9 @@ async function askModel(
     };
 
   // D15: each entry must match the line the model was shown; only then is the original line written.
+  // A blank line shows nothing, so it is no evidence even when it matches.
   const shownAsPrompted = (e: { line: number; text: string }) =>
-    lines[e.line - 1]?.trim() === e.text.trim();
+    e.text.trim() !== '' && lines[e.line - 1]?.trim() === e.text.trim();
   const noEvidenceForViolation = answer.verdict === 'violation' && answer.evidence.length === 0;
   if (noEvidenceForViolation || !answer.evidence.every(shownAsPrompted)) {
     return {

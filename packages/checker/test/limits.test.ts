@@ -3,6 +3,7 @@
 
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { check } from '../src/check.ts';
+import type { Model } from '../src/model.ts';
 import { fakeModel, never } from './fake-model.ts';
 
 const statement = '# Sorting\n\nRead `n` integers and print them in non-decreasing order.\n';
@@ -98,6 +99,28 @@ describe('no answer in time becomes unsure', () => {
       50,
     );
     expect(signal?.aborted).toBe(true);
+  });
+});
+
+describe('a model that throws before it returns a promise', () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('leaves no timer behind, whose late timeout nobody would handle', async () => {
+    vi.useFakeTimers();
+    const model: Model = {
+      name: 'throws',
+      complete() {
+        throw new Error('bad request');
+      },
+    };
+    // What check() answers is not the point here: only that the time limit is switched off.
+    await check(
+      { statement, constraints: [MERGE], source },
+      { modelOff: false, model, timeoutMs: 2000 },
+    ).catch(() => undefined);
+    expect(vi.getTimerCount()).toBe(0);
   });
 });
 
