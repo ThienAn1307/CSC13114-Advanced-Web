@@ -154,9 +154,11 @@ Comments are replaced by spaces and every newline is kept, so line N of the prom
 
 ## D16. Deployment: one VM from Azure for Students
 
-An Ubuntu VM running `docker compose`. Only the web port is open to everyone; SSH accepts only the team's keys (no password login); PostgreSQL is not reachable from outside. The VM has at least 2 GiB of memory, because it runs PostgreSQL, the API, two workers and the sandboxes; the 1 GiB sizes are not used. The size and its monthly price are taken from the portal at sign-up and written here, so the credit lasts until 31/12. Azure for Students gives credit without a card, verified with the school email (to be confirmed at sign-up). It runs from PA#3 until the PA#6 oral; the PA#4 red team attacks it.
+An Ubuntu VM running `docker compose`. Only the web ports (80 and 443) are open to everyone; SSH accepts only the team's keys (no password login); PostgreSQL is not reachable from outside. The VM has at least 2 GiB of memory, because it runs PostgreSQL, the API, two workers and the sandboxes; the 1 GiB sizes are not used. The size and its monthly price are taken from the portal at sign-up and written here, so the credit lasts until 31/12. Azure for Students gives credit without a card, verified with the school email (to be confirmed at sign-up). It runs from PA#3 until the PA#6 oral; the PA#4 red team attacks it.
 
-**Why:** the judge worker must start containers, which a PaaS does not allow. A laptop behind a tunnel would run strangers' code on our own machine, and would have to stay on until the end of December.
+Caddy serves the web app, passes `/v1` to the API, and gets and renews the HTTPS certificate for the VM's DNS name. The compose services are `web`, `api`, `judge`, `check`, `postgres` and a one-time `migrate`; PostgreSQL and `judge` are on a network with no way out. `deploy/up.sh` refuses to start a compose file that gives the key or the Docker socket to the wrong service.
+
+**Why:** the judge worker must start containers, which a PaaS does not allow. A laptop behind a tunnel would run strangers' code on our own machine, and would have to stay on until the end of December. Caddy rather than nginx, because HTTPS then needs no second program: passwords cross the network at sign-in, and the browser gives `crypto.randomUUID`, which the submit page uses, only on HTTPS.
 
 ## D17. Sign-in, classes and screens
 
