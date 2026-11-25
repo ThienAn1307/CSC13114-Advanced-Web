@@ -7,7 +7,7 @@ export interface CheckConfig {
   maxCallsPerLab: number;
 }
 
-const DEFAULT_MODEL = 'gemini-3.1-flash-lite'; // decisions.md D8
+const DEFAULT_MODEL = 'gemini-3.5-flash-lite'; // decisions.md D8
 /** 80 submissions with 2 semantic constraints are 160 calls; the free tier has 500 a day (D8). */
 const DEFAULT_CAP = '200';
 
