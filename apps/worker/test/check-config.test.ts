@@ -10,7 +10,7 @@ describe('checkConfig', () => {
   it('reads the key, with the model of D8 and a cap by default', () => {
     expect(checkConfig(ENV)).toEqual({
       databaseUrl: ENV.DATABASE_URL,
-      gemini: { apiKey: 'fake-key', model: 'gemini-3.1-flash-lite' },
+      gemini: { apiKey: 'fake-key', model: 'gemini-3.5-flash-lite' },
       maxCallsPerLab: 200,
     });
   });
