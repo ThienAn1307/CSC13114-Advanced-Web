@@ -6,9 +6,11 @@ import {
   checkJobs,
   judgeResults,
   judgeTestResults,
+  labConstraints,
   labTestCases,
   labs,
   submissions,
+  users,
 } from './schema.js';
 import type { Database } from './submission-data.js';
 
@@ -37,6 +39,16 @@ export interface JudgeTask {
   cases: { input: string; expectedOutput: string }[];
   cpuSeconds: number;
   memoryMb: number;
+}
+
+/** What the checker needs; the student's identity is there only to be removed from the prompt (D15). */
+export interface CheckTask {
+  labId: string;
+  source: string;
+  statement: string;
+  /** In the lab's order. `deduction` is in points out of 10. */
+  constraints: { id: string; text: string; deduction: number }[];
+  student: { name: string; email: string };
 }
 
 /** `lost`: another worker holds the row now, and nothing was written. */
@@ -214,6 +226,41 @@ export class CheckQueue {
         .returning({ attempts: t.attempts });
       return { submissionId: next.id, token, attempts: row!.attempts };
     });
+  }
+
+  async task(submissionId: string): Promise<CheckTask> {
+    const [found] = await this.db
+      .select({
+        labId: labs.id,
+        source: submissions.source,
+        statement: labs.statement,
+        name: users.displayName,
+        email: users.email,
+      })
+      .from(submissions)
+      .innerJoin(labs, eq(labs.id, submissions.labId))
+      .innerJoin(users, eq(users.id, submissions.studentId))
+      .where(eq(submissions.id, submissionId));
+    if (!found) throw new Error('Submission not found.');
+    const { name, email, ...task } = found;
+    const constraints = await this.db
+      .select({
+        id: labConstraints.id,
+        text: labConstraints.text,
+        deductionHundredths: labConstraints.deductionHundredths,
+      })
+      .from(labConstraints)
+      .where(eq(labConstraints.labId, task.labId))
+      .orderBy(asc(labConstraints.position));
+    return {
+      ...task,
+      constraints: constraints.map(({ id, text, deductionHundredths }) => ({
+        id,
+        text,
+        deduction: deductionHundredths / 100,
+      })),
+      student: { name, email },
+    };
   }
 
   async renew(claim: Claim, leaseMs: number): Promise<boolean> {

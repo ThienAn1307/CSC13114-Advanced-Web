@@ -6,9 +6,11 @@
   "scripts": {
     "typecheck": "tsc -p tsconfig.json",
     "build": "tsc -p tsconfig.build.json",
+    "start:check": "node dist/apps/worker/src/check.js",
     "start:judge": "node dist/apps/worker/src/judge.js"
   },
   "dependencies": {
+    "@leetkob/checker": "0.0.0",
     "@leetkob/db": "0.0.0",
     "@leetkob/judge": "0.0.0"
   },

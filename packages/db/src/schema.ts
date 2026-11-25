@@ -1,5 +1,6 @@
 import { sql } from 'drizzle-orm';
 import {
+  bigint,
   check,
   index,
   integer,
@@ -217,6 +218,52 @@ export const checkJobs = pgTable(
     index('check_jobs_claimable_idx')
       .on(t.createdAt, t.submissionId)
       .where(sql`${t.status} in ('queued', 'checking')`),
+  ],
+);
+
+/**
+ * The call log: one row per model call (D14), for the team only. The row is written before the
+ * call, so a call cut short by a crash still counts towards the lab's cap (D8).
+ */
+export const modelCalls = pgTable(
+  'model_calls',
+  {
+    id: uuid('id').primaryKey(),
+    submissionId: uuid('submission_id')
+      .notNull()
+      .references(() => submissions.id),
+    labId: uuid('lab_id')
+      .notNull()
+      .references(() => labs.id),
+    constraintId: uuid('constraint_id')
+      .notNull()
+      .references(() => labConstraints.id),
+    /** The check job's attempt that made the call. */
+    attempt: integer('attempt').notNull(),
+    model: text('model').notNull(),
+    /** Exactly what was sent: no comments and no identity (D15). */
+    prompt: text('prompt').notNull(),
+    startedAt: timestamp('started_at', ms).notNull().defaultNow(),
+    /** The provider's id; null when no answer came back. */
+    requestId: text('request_id'),
+    tokensIn: integer('tokens_in'),
+    tokensOut: integer('tokens_out'),
+    costNanoUsd: bigint('cost_nano_usd', { mode: 'number' }),
+    ms: integer('ms'),
+    outcome: text('outcome', {
+      enum: ['started', 'answered', 'bad-schema', 'evidence-mismatch', 'timeout', 'model-error'],
+    })
+      .notNull()
+      .default('started'),
+    error: text('error'),
+  },
+  (t) => [
+    check(
+      'model_calls_outcome_check',
+      sql`${t.outcome} in ('started', 'answered', 'bad-schema', 'evidence-mismatch', 'timeout', 'model-error')`,
+    ),
+    index('model_calls_lab_idx').on(t.labId),
+    index('model_calls_submission_idx').on(t.submissionId),
   ],
 );
 
