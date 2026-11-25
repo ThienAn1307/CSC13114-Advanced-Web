@@ -1,0 +1,16 @@
+# Everything stays out of the build context but what the images need, so no .env can get in.
+*
+!package.json
+!package-lock.json
+!tsconfig.base.json
+!apps
+!packages
+!tests
+!deploy/Caddyfile
+**/.env
+**/.env.*
+**/node_modules
+**/dist
+**/test
+**/*.test.ts
+**/*.test.tsx

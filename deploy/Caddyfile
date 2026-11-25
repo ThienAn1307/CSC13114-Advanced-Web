@@ -1,0 +1,28 @@
+# SITE_ADDRESS is the VM's DNS name; Caddy gets and renews its certificate and redirects HTTP to HTTPS.
+{
+	admin off
+}
+
+{$SITE_ADDRESS} {
+	header {
+		Content-Security-Policy "default-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'"
+		Referrer-Policy no-referrer
+		X-Content-Type-Options nosniff
+		-Server
+	}
+
+	handle /v1/* {
+		# A little above the API's own limit, so the API gives the answer of the contract.
+		request_body {
+			max_size 1MB
+		}
+		reverse_proxy api:3000
+	}
+
+	handle {
+		root * /srv
+		encode gzip
+		try_files {path} /index.html
+		file_server
+	}
+}

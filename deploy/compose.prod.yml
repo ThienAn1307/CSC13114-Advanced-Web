@@ -1,0 +1,126 @@
+# The deployment on the VM (D16). Start it with deploy/up.sh, which checks this file first.
+# Values come from deploy/.env (README, Deployment). Each service gets only the ones named here:
+# never `env_file`, which would give every secret to every service.
+name: leetkob-prod
+
+x-service: &service
+  restart: unless-stopped
+  init: true
+  read_only: true
+  tmpfs: [/tmp]
+  cap_drop: [ALL]
+  security_opt: ['no-new-privileges:true']
+  logging:
+    driver: json-file
+    options: { max-size: 10m, max-file: '3' }
+
+x-database-url: &database-url postgresql://leetkob:${POSTGRES_PASSWORD:?}@postgres:5432/leetkob
+
+services:
+  postgres:
+    image: postgres:16.15-alpine@sha256:aa6cb33cf4c19c765cefcf48d96176258800870a9a1e930ad126200f9d825139
+    restart: unless-stopped
+    security_opt: ['no-new-privileges:true']
+    environment:
+      POSTGRES_USER: leetkob
+      POSTGRES_DB: leetkob
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?}
+    volumes: ['pgdata:/var/lib/postgresql/data']
+    networks: [db]
+    mem_limit: 512m
+    healthcheck:
+      test: ['CMD', 'pg_isready', '-h', '127.0.0.1', '-U', 'leetkob']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  migrate:
+    <<: *service
+    restart: 'no'
+    build: { context: .., dockerfile: deploy/Dockerfile, target: migrate }
+    environment:
+      DATABASE_URL: *database-url
+    networks: [db]
+    depends_on:
+      postgres: { condition: service_healthy }
+
+  api:
+    <<: *service
+    build: { context: .., dockerfile: deploy/Dockerfile, target: api }
+    environment:
+      DATABASE_URL: *database-url
+      JWT_SECRET: ${JWT_SECRET:?}
+    networks: [db, front]
+    mem_limit: 512m
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+    healthcheck:
+      # Any answer below 500 will do; without a token it is 401.
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch('http://127.0.0.1:3000/v1/classes').then((r) => process.exit(r.status < 500 ? 0: 1), () => process.exit(1))"
+      interval: 10s
+      timeout: 5s
+      retries: 6
+
+  # D12: starts the sandboxes through the Docker socket, so it has no model key and no way out to
+  # the internet. The socket is mounted here and never in a sandbox.
+  judge:
+    <<: *service
+    build: { context: .., dockerfile: deploy/Dockerfile, target: judge }
+    environment:
+      DATABASE_URL: *database-url
+      JUDGE_IMAGE: ${JUDGE_IMAGE:?}
+    group_add: ['${DOCKER_GID:?}']
+    volumes:
+      - type: bind
+        source: /var/run/docker.sock
+        target: /var/run/docker.sock
+    networks: [db]
+    mem_limit: 512m
+    # Time to finish the test it is running; after that the lease brings the submission back (D11).
+    stop_grace_period: 60s
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+
+  # D12: has the model key and no Docker. Run one: the request rate is kept per process (D8).
+  check:
+    <<: *service
+    build: { context: .., dockerfile: deploy/Dockerfile, target: check }
+    environment:
+      DATABASE_URL: *database-url
+      GEMINI_API_KEY: ${GEMINI_API_KEY-}
+      GEMINI_MODEL: ${GEMINI_MODEL-}
+      MAX_MODEL_CALLS_PER_LAB: ${MAX_MODEL_CALLS_PER_LAB:-200}
+      MODEL_OFF: ${MODEL_OFF-}
+    networks: [db, egress]
+    mem_limit: 256m
+    stop_grace_period: 70s
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+
+  web:
+    <<: *service
+    build: { context: .., dockerfile: deploy/Dockerfile, target: web }
+    cap_add: [NET_BIND_SERVICE]
+    environment:
+      SITE_ADDRESS: ${SITE_ADDRESS:?}
+    ports: ['80:80', '443:443']
+    volumes: ['caddy-data:/data', 'caddy-config:/config']
+    networks: [front, public]
+    mem_limit: 128m
+    depends_on:
+      api: { condition: service_healthy }
+
+networks:
+  db: { internal: true }
+  front: { internal: true }
+  public: {}
+  egress: {}
+
+volumes:
+  pgdata:
+  caddy-data:
+  caddy-config:
