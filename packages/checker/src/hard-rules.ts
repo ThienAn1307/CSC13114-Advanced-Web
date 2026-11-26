@@ -57,6 +57,10 @@ function declaredNames(tokens: Token[]): Set<string> {
       if (tokens[p - 1]?.text !== 'using') declared.add(token.text); // not `using namespace std;`
       return;
     }
+    if (prev.text === 'using') {
+      if (tokens[i + 1]?.text === '=') declared.add(token.text); // `using sort = int;`
+      return;
+    }
     const typeBefore =
       prev.kind === 'identifier' ||
       TYPE_KEYWORDS.has(prev.text) ||
