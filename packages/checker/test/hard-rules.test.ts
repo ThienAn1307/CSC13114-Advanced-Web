@@ -975,4 +975,32 @@ describe('decideBanList: alias declarations and token pasting', () => {
   it.each(caught)('catches %s', (_what, ban, body, expected) => {
     expect(lines(ban, code(...STD, ...body))).toEqual(expected);
   });
+
+  it('does not decide a pass when `##` in a macro could spell a banned name', () => {
+    const source = code(
+      '#include <vector>',
+      '#include <algorithm>',
+      '#define J(a, b) a##b',
+      'int main() {',
+      '    std::vector<int> v(3);',
+      '    std::J(so, rt)(v.begin(), v.end());',
+      '}',
+    );
+    expect(decideBanList(SORT_BAN, source)).toBeNull();
+  });
+
+  it('still catches a banned name it can see in code that pastes tokens', () => {
+    const source = code(
+      '#include <bits/stdc++.h>',
+      '#define CAT(a, b) a##b',
+      'int CAT(my, count) = 0;',
+      'int main() { vector<int> v(3); std::sort(v.begin(), v.end()); }',
+    );
+    expect(lines(SORT_BAN, source)).toEqual([4]);
+  });
+
+  it('still decides code whose only `#` is the stringizing one', () => {
+    const source = code('#include <cstdio>', '#define SHOW(x) puts(#x)', 'int main() { SHOW(a); }');
+    expect(decideBanList(SORT_BAN, source)).toEqual({ verdict: 'pass', evidence: [] });
+  });
 });

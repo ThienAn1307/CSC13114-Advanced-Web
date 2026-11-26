@@ -64,6 +64,25 @@ describe('check with the model off (MODEL_OFF=1)', () => {
     ]);
   });
 
+  it('leaves a ban list unsure when `##` in a macro could spell a banned name', async () => {
+    const source = code(
+      '#include <algorithm>',
+      '#define J(a, b) a##b',
+      'int a[3];',
+      'int main() { std::J(so, rt)(a, a + 3); }',
+    );
+    const { verdicts } = await check({ statement, constraints: [BAN], source }, { modelOff: true });
+    expect(verdicts).toEqual([
+      {
+        constraintId: 'C1',
+        verdict: 'unsure',
+        evidence: [],
+        decidedBy: 'guardrail',
+        unsureCause: 'model-off',
+      },
+    ]);
+  });
+
   it('gives exactly one verdict per constraint, in the order of the constraints', async () => {
     const { verdicts } = await check(
       { statement, constraints: [SEMANTIC, BAN], source: code('int main() {}') },
