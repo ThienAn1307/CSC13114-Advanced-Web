@@ -5,6 +5,12 @@ import { validateConfig } from './config.js';
 import { bootstrap } from './main.js';
 import { outboxOnlyQueue } from './outbox-queue.js';
 import { PostgresSubmissionData } from './postgres-submission-data.js';
+import { PostgresAccounts } from './auth/postgres-accounts.js';
+import { PostgresClassrooms } from './classes/postgres-classrooms.js';
+import { PostgresMembers } from './classes/postgres-members.js';
+import { PostgresLabs } from './classes/postgres-labs.js';
+import { PostgresStudentSubmissions } from './submissions/postgres-student-submissions.js';
+import { PostgresReviewQueue } from './reviews/postgres-review-queue.js';
 
 const handle = createDb(requireDatabaseUrl());
 // Fail at startup, not on the first request, when the database cannot be reached.
@@ -17,7 +23,14 @@ try {
   process.exit(1);
 }
 try {
-  await bootstrap(new PostgresSubmissionData(handle), outboxOnlyQueue);
+  await bootstrap(new PostgresSubmissionData(handle), outboxOnlyQueue, {
+    accounts: new PostgresAccounts(handle.db),
+    classrooms: new PostgresClassrooms(handle.db),
+    members: new PostgresMembers(handle.db),
+    labs: new PostgresLabs(handle.db),
+    studentSubmissions: new PostgresStudentSubmissions(handle.db),
+    reviews: new PostgresReviewQueue(handle.db),
+  });
 } catch (error) {
   await handle.close();
   throw error;
