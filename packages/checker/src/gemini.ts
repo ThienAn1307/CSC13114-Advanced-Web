@@ -18,10 +18,11 @@ const ENDPOINT = 'https://generativelanguage.googleapis.com/v1beta/models';
 
 /**
  * Paid list price in nano-USD per token, which is the same number as USD per 1M tokens times 1000.
- * Read on Google's pricing page on 2026-11-23. The free tier is billed $0; this is what a call would cost.
+ * Read on Google's pricing page: 3.1 on 2026-11-23, 3.5 on 2026-11-25. The free tier is billed $0; this is what a call would cost.
  */
 const NANO_USD_PER_TOKEN: Record<string, { input: number; output: number }> = {
   'gemini-3.1-flash-lite': { input: 250, output: 1500 },
+  'gemini-3.5-flash-lite': { input: 300, output: 2500 },
 };
 
 /** The answer schema (D14), sent so the model answers in JSON; our own check still decides. */
