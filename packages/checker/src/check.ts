@@ -2,7 +2,7 @@
 
 import { decideBanList, type Evidence } from './hard-rules.ts';
 import { parseModelAnswer, type Model, type ModelResponse } from './model.ts';
-import { buildPrompt } from './prompt.ts';
+import { buildPrompt, promptLines, type Identity } from './prompt.ts';
 
 export interface Constraint {
   id: string;
@@ -15,6 +15,8 @@ export interface CheckInput {
   statement: string;
   constraints: Constraint[];
   source: string;
+  /** The student's name, email and id, replaced by placeholders before the code reaches the model (D15). */
+  identity?: Identity;
 }
 
 export type CheckOptions =
@@ -38,8 +40,14 @@ export interface ModelCall {
   model: string;
   tokensIn?: number;
   tokensOut?: number;
+  /** List price of the call in whole nano-USD (D14); the free tier is billed $0. */
+  costNanoUsd?: number;
   ms: number;
-  outcome: 'answered' | 'bad-schema' | 'timeout';
+  /** What was sent: the statement, one constraint, and the code without comments and identity (D14). */
+  prompt: string;
+  outcome: 'answered' | 'bad-schema' | 'evidence-mismatch' | 'timeout' | 'model-error';
+  /** Why a call failed (HTTP status, network), for the team; never shown to the student. */
+  error?: string;
 }
 
 export interface CheckResult {
@@ -78,21 +86,26 @@ async function askModel(
   model: Model,
   timeoutMs: number,
 ): Promise<{ verdict: Verdict; call: ModelCall }> {
-  const prompt = buildPrompt(input.statement, constraint.text, input.source);
+  const lines = promptLines(input.source, input.identity);
+  const prompt = buildPrompt(input.statement, constraint.text, lines);
   const started = performance.now();
   const ms = () => Math.round(performance.now() - started);
   let response: ModelResponse;
   try {
     response = await completeWithin(model, prompt, timeoutMs);
   } catch (error) {
-    if (!(error instanceof Timeout)) throw error;
     const call: ModelCall = {
       constraintId: constraint.id,
       model: model.name,
       ms: ms(),
+      prompt,
       outcome: 'timeout',
     };
-    return { verdict: unsure(constraint.id, 'timeout'), call };
+    if (error instanceof Timeout) return { verdict: unsure(constraint.id, 'timeout'), call };
+    // D14: a failed call (HTTP error, no connection) costs this pair only.
+    const message = error instanceof Error ? error.message : String(error);
+    const failed: ModelCall = { ...call, outcome: 'model-error', error: message };
+    return { verdict: unsure(constraint.id, 'model-error'), call: failed };
   }
 
   const call: ModelCall = {
@@ -101,7 +114,9 @@ async function askModel(
     model: response.model,
     tokensIn: response.tokensIn,
     tokensOut: response.tokensOut,
+    ...(response.costNanoUsd === undefined ? {} : { costNanoUsd: response.costNanoUsd }),
     ms: ms(),
+    prompt,
     outcome: 'answered',
   };
   const answer = parseModelAnswer(response.text);
@@ -111,14 +126,24 @@ async function askModel(
       call: { ...call, outcome: 'bad-schema' },
     };
 
-  // Evidence carries the original line's text (D15); checking it against the prompt comes with the model-call tests.
-  const lines = input.source.split('\n');
+  // D15: each entry must match the line the model was shown; only then is the original line written.
+  // A blank line shows nothing, so it is no evidence even when it matches.
+  const shownAsPrompted = (e: { line: number; text: string }) =>
+    e.text.trim() !== '' && lines[e.line - 1]?.trim() === e.text.trim();
+  const noEvidenceForViolation = answer.verdict === 'violation' && answer.evidence.length === 0;
+  if (noEvidenceForViolation || !answer.evidence.every(shownAsPrompted)) {
+    return {
+      verdict: unsure(constraint.id, 'evidence-mismatch'),
+      call: { ...call, outcome: 'evidence-mismatch' },
+    };
+  }
+  const original = input.source.split('\n');
   const verdict: Verdict = {
     constraintId: constraint.id,
     verdict: answer.verdict,
     evidence: answer.evidence.map(({ line }) => ({
       line,
-      text: (lines[line - 1] ?? '').replace(/\r$/, ''),
+      text: original[line - 1]!.replace(/\r$/, ''),
     })),
     reason: answer.reason,
     decidedBy: 'model',

@@ -1,0 +1,22 @@
+LeeTKOB eval · data D:\Workspaces\School\Advanced_Web\LeeTKOB-wt\ownset\eval\own · predictions D:\Workspaces\School\Advanced_Web\LeeTKOB\eval\runs\2026-11-25-gemini-3.5-flash-lite\own\predictions.jsonl
+6 solutions, 12 (solution, constraint) pairs: 7 labelled pass, 5 labelled violation
+
+Metrics
+  wrongful deductions    0                  ok    (target = 0)
+  recall                 100.0% (5/5)       ok    (target >= 90.0%)
+  unsure rate            0.0% (0/12)        ok    (target <= 20.0%)
+
+By tag (a pair can carry several tags)
+  tag        pairs  pass  viol  caught  wrongful  unsure
+  obvious        3     0     3     3/3         0       0
+  disguised      1     0     1     1/1         0       0
+  trap           2     2     0       -         0       0
+  injection      2     0     2     2/2         0       0
+  style          2     2     0       -         0       0
+  (none)         3     3     0       -         0       0
+
+Wrongful deductions (0)
+
+Violations not caught (0)
+
+PASS

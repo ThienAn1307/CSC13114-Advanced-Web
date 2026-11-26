@@ -1,0 +1,102 @@
+{"solution":"binary-search/s01","constraint":"C1","verdict":"pass","evidence":[]}
+{"solution":"binary-search/s01","constraint":"C2","verdict":"pass","evidence":[{"line":14,"text":"        int lo = 1, hi = n, ans = -1;"},{"line":15,"text":"        while (lo <= hi) {"},{"line":16,"text":"            int mid = (lo + hi) / 2;"},{"line":17,"text":"            if (a[mid] == x) { ans = mid; break; }"},{"line":18,"text":"            if (a[mid] < x) lo = mid + 1;"},{"line":19,"text":"            else hi = mid - 1;"}]}
+{"solution":"binary-search/s02","constraint":"C1","verdict":"pass","evidence":[]}
+{"solution":"binary-search/s02","constraint":"C2","verdict":"pass","evidence":[{"line":5,"text":"int timKiem(int trai, int phai, int x) {"},{"line":7,"text":"    int giua = trai + (phai - trai) / 2;"},{"line":9,"text":"    if (day[giua] > x) return timKiem(trai, giua - 1, x);"},{"line":10,"text":"    return timKiem(giua + 1, phai, x);"}]}
+{"solution":"binary-search/s03","constraint":"C1","verdict":"pass","evidence":[]}
+{"solution":"binary-search/s03","constraint":"C2","verdict":"pass","evidence":[{"line":8,"text":"    while (r - l > 1) {"},{"line":9,"text":"        int m = (l + r) / 2;"},{"line":10,"text":"        if (v[m] <= x) l = m;"},{"line":11,"text":"        else r = m;"}]}
+{"solution":"binary-search/s04","constraint":"C1","verdict":"violation","evidence":[{"line":14,"text":"        auto it = lower_bound(a.begin(), a.end(), x);"}]}
+{"solution":"binary-search/s04","constraint":"C2","verdict":"violation","evidence":[{"line":14,"text":"        auto it = lower_bound(a.begin(), a.end(), x);"}]}
+{"solution":"binary-search/s05","constraint":"C1","verdict":"pass","evidence":[]}
+{"solution":"binary-search/s05","constraint":"C2","verdict":"violation","evidence":[{"line":8,"text":"        lo++;"}]}
+{"solution":"binary-search/s06","constraint":"C1","verdict":"pass","evidence":[]}
+{"solution":"binary-search/s06","constraint":"C2","verdict":"violation","evidence":[{"line":9,"text":"    if (a[l] == x) return l + 1;"},{"line":10,"text":"    return nhiPhan(a, l + 1, r, x);"}]}
+{"solution":"binary-search/s07","constraint":"C1","verdict":"pass","evidence":[]}
+{"solution":"binary-search/s07","constraint":"C2","verdict":"violation","evidence":[{"line":16,"text":"        for (int i = 0; i < n; i++)"},{"line":17,"text":"            if (a[i] == x) { pos = i + 1; break; }"}]}
+{"solution":"dynamic-array/s01","constraint":"C1","verdict":"pass","evidence":[]}
+{"solution":"dynamic-array/s01","constraint":"C2","verdict":"pass","evidence":[{"line":13,"text":"    d.data = new int[d.cap];"},{"line":18,"text":"        int* bigger = new int[d.cap * 2];"}]}
+{"solution":"dynamic-array/s01","constraint":"C3","verdict":"pass","evidence":[{"line":13,"text":"    d.data = new int[d.cap];"},{"line":20,"text":"        delete[] d.data;"},{"line":35,"text":"    delete[] d.data;"}]}
+{"solution":"dynamic-array/s02","constraint":"C1","verdict":"pass","evidence":[]}
+{"solution":"dynamic-array/s02","constraint":"C2","verdict":"pass","evidence":[{"line":6,"text":"    int* mang = (int*)malloc(sucChua * sizeof(int));"},{"line":9,"text":"        if (soLuong == sucChua) {"},{"line":10,"text":"            sucChua *= 2;"},{"line":11,"text":"            mang = (int*)realloc(mang, sucChua * sizeof(int));"}]}
+{"solution":"dynamic-array/s02","constraint":"C3","verdict":"pass","evidence":[{"line":11,"text":"            mang = (int*)realloc(mang, sucChua * sizeof(int));"},{"line":18,"text":"    free(mang);"}]}
+{"solution":"dynamic-array/s03","constraint":"C1","verdict":"pass","evidence":[]}
+{"solution":"dynamic-array/s03","constraint":"C2","verdict":"pass","evidence":[{"line":13,"text":"                int* tmp = new int[newCap];"},{"line":12,"text":"                int newCap = cap == 0 ? 8 : cap * 2;"}]}
+{"solution":"dynamic-array/s03","constraint":"C3","verdict":"pass","evidence":[{"line":9,"text":"        ~vector() { delete[] buf; }"},{"line":15,"text":"                delete[] buf;"}]}
+{"solution":"dynamic-array/s04","constraint":"C1","verdict":"violation","evidence":[{"line":5,"text":"    vector<int> a;"}]}
+{"solution":"dynamic-array/s04","constraint":"C2","verdict":"unsure","evidence":[]}
+{"solution":"dynamic-array/s04","constraint":"C3","verdict":"pass","evidence":[]}
+{"solution":"dynamic-array/s05","constraint":"C1","verdict":"violation","evidence":[{"line":4,"text":"typedef std::basic_string<int> Buffer;"}]}
+{"solution":"dynamic-array/s05","constraint":"C2","verdict":"violation","evidence":[{"line":4,"text":"typedef std::basic_string<int> Buffer;"},{"line":7,"text":"    Buffer b;"}]}
+{"solution":"dynamic-array/s05","constraint":"C3","verdict":"pass","evidence":[{"line":4,"text":"typedef std::basic_string<int> Buffer;"},{"line":7,"text":"    Buffer b;"}]}
+{"solution":"dynamic-array/s06","constraint":"C1","verdict":"pass","evidence":[]}
+{"solution":"dynamic-array/s06","constraint":"C2","verdict":"violation","evidence":[{"line":4,"text":"const int MAX_N = 100000;"},{"line":7,"text":"    int capacity = MAX_N;"},{"line":8,"text":"    int* a = new int[capacity];"}]}
+{"solution":"dynamic-array/s06","constraint":"C3","verdict":"pass","evidence":[{"line":8,"text":"    int* a = new int[capacity];"},{"line":16,"text":"    delete[] a;"}]}
+{"solution":"dynamic-array/s07","constraint":"C1","verdict":"pass","evidence":[]}
+{"solution":"dynamic-array/s07","constraint":"C2","verdict":"pass","evidence":[{"line":8,"text":"        int* moi = new int[cap * 2];"},{"line":17,"text":"    arr = new int[cap];"}]}
+{"solution":"dynamic-array/s07","constraint":"C3","verdict":"pass","evidence":[{"line":17,"text":"    arr = new int[cap];"},{"line":8,"text":"        int* moi = new int[cap * 2];"},{"line":23,"text":"    delete[] arr;"}]}
+{"solution":"dynamic-array/s08","constraint":"C1","verdict":"pass","evidence":[]}
+{"solution":"dynamic-array/s08","constraint":"C2","verdict":"violation","evidence":[{"line":6,"text":"int a[100005];"}]}
+{"solution":"dynamic-array/s08","constraint":"C3","verdict":"pass","evidence":[{"line":6,"text":"int a[100005];"}]}
+{"solution":"gcd-euclid/s01","constraint":"C1","verdict":"pass","evidence":[]}
+{"solution":"gcd-euclid/s01","constraint":"C2","verdict":"pass","evidence":[{"line":4,"text":"long long ucln(long long a, long long b) {"},{"line":5,"text":"    while (b != 0) {"},{"line":6,"text":"        long long r = a % b;"},{"line":7,"text":"        a = b;"},{"line":8,"text":"        b = r;"},{"line":9,"text":"    }"},{"line":10,"text":"    return a;"},{"line":11,"text":"}"}]}
+{"solution":"gcd-euclid/s02","constraint":"C1","verdict":"pass","evidence":[]}
+{"solution":"gcd-euclid/s02","constraint":"C2","verdict":"pass","evidence":[{"line":6,"text":"        return b == 0 ? a : gcd(b, a % b);"}]}
+{"solution":"gcd-euclid/s03","constraint":"C1","verdict":"pass","evidence":[]}
+{"solution":"gcd-euclid/s03","constraint":"C2","verdict":"pass","evidence":[{"line":4,"text":"int gcdTru(int a, int b) {"},{"line":5,"text":"    while (a != b) {"},{"line":6,"text":"        if (a > b) a -= b;"},{"line":7,"text":"        else b -= a;"},{"line":8,"text":"    }"},{"line":9,"text":"    return a;"},{"line":10,"text":"}"}]}
+{"solution":"gcd-euclid/s04","constraint":"C1","verdict":"violation","evidence":[{"line":10,"text":"        long long g = __gcd(a, b);"}]}
+{"solution":"gcd-euclid/s04","constraint":"C2","verdict":"violation","evidence":[{"line":10,"text":"        long long g = __gcd(a, b);"}]}
+{"solution":"gcd-euclid/s05","constraint":"C1","verdict":"violation","evidence":[{"line":5,"text":"    long long l = std::lcm(a, b);"}]}
+{"solution":"gcd-euclid/s05","constraint":"C2","verdict":"violation","evidence":[{"line":5,"text":"    long long l = std::lcm(a, b);"}]}
+{"solution":"gcd-euclid/s06","constraint":"C1","verdict":"pass","evidence":[]}
+{"solution":"gcd-euclid/s06","constraint":"C2","verdict":"violation","evidence":[{"line":6,"text":"    for (int d = min(a, b); d >= 1; d--)"},{"line":7,"text":"        if (a % d == 0 && b % d == 0) return d;"}]}
+{"solution":"gcd-euclid/s07","constraint":"C1","verdict":"pass","evidence":[]}
+{"solution":"gcd-euclid/s07","constraint":"C2","verdict":"violation","evidence":[{"line":10,"text":"    for (long long p = 2; p * p <= x; p++) {"},{"line":11,"text":"        while (x % p == 0) {"}]}
+{"solution":"reverse-recursive/s01","constraint":"C1","verdict":"pass","evidence":[]}
+{"solution":"reverse-recursive/s01","constraint":"C2","verdict":"pass","evidence":[]}
+{"solution":"reverse-recursive/s02","constraint":"C1","verdict":"pass","evidence":[]}
+{"solution":"reverse-recursive/s02","constraint":"C2","verdict":"pass","evidence":[]}
+{"solution":"reverse-recursive/s03","constraint":"C1","verdict":"pass","evidence":[]}
+{"solution":"reverse-recursive/s03","constraint":"C2","verdict":"pass","evidence":[]}
+{"solution":"reverse-recursive/s04","constraint":"C1","verdict":"violation","evidence":[{"line":15,"text":"    for (int i = 0; i < n; i++) {"}]}
+{"solution":"reverse-recursive/s04","constraint":"C2","verdict":"pass","evidence":[]}
+{"solution":"reverse-recursive/s05","constraint":"C1","verdict":"violation","evidence":[{"line":3,"text":"#define FOR(i, a, b) for (int i = (a); i < (b); ++i)"}]}
+{"solution":"reverse-recursive/s05","constraint":"C2","verdict":"pass","evidence":[]}
+{"solution":"reverse-recursive/s06","constraint":"C1","verdict":"violation","evidence":[{"line":14,"text":"        goto doc;"},{"line":21,"text":"        goto ra;"}]}
+{"solution":"reverse-recursive/s06","constraint":"C2","verdict":"pass","evidence":[]}
+{"solution":"reverse-recursive/s07","constraint":"C1","verdict":"pass","evidence":[]}
+{"solution":"reverse-recursive/s07","constraint":"C2","verdict":"violation","evidence":[{"line":22,"text":"    copy(v.rbegin(), v.rend(), ostream_iterator<int>(cout, \" \"));"},{"line":24,"text":"    cout << accumulate(v.begin(), v.end(), 0LL) << \"\\n\";"}]}
+{"solution":"reverse-recursive/s08","constraint":"C1","verdict":"pass","evidence":[]}
+{"solution":"reverse-recursive/s08","constraint":"C2","verdict":"pass","evidence":[]}
+{"solution":"reverse-words/s01","constraint":"C1","verdict":"pass","evidence":[]}
+{"solution":"reverse-words/s01","constraint":"C2","verdict":"pass","evidence":[{"line":14,"text":"            while (l < r) {"},{"line":15,"text":"                swap(s[l], s[r]);"}]}
+{"solution":"reverse-words/s02","constraint":"C1","verdict":"pass","evidence":[]}
+{"solution":"reverse-words/s02","constraint":"C2","verdict":"violation","evidence":[{"line":14,"text":"    string tu;"},{"line":16,"text":"    while (cin >> tu) {"},{"line":17,"text":"        daoChuoi(tu, 0, (int)tu.size() - 1);"}]}
+{"solution":"reverse-words/s03","constraint":"C1","verdict":"pass","evidence":[]}
+{"solution":"reverse-words/s03","constraint":"C2","verdict":"pass","evidence":[{"line":6,"text":"void reverse(char* l, char* r) {   // dao doan [l, r]"},{"line":7,"text":"    while (l < r) {"},{"line":8,"text":"        *l ^= *r;"},{"line":23,"text":"        reverse(s + i, s + j - 1);"}]}
+{"solution":"reverse-words/s04","constraint":"C1","verdict":"violation","evidence":[{"line":8,"text":"        reverse(w.begin(), w.end());"}]}
+{"solution":"reverse-words/s04","constraint":"C2","verdict":"violation","evidence":[{"line":5,"text":"    string w;"},{"line":7,"text":"    while (cin >> w) {"},{"line":8,"text":"        reverse(w.begin(), w.end());"}]}
+{"solution":"reverse-words/s05","constraint":"C1","verdict":"violation","evidence":[{"line":7,"text":"    return string(w.rbegin(), w.rend());"}]}
+{"solution":"reverse-words/s05","constraint":"C2","verdict":"violation","evidence":[{"line":6,"text":"string lat(const string& w) {"},{"line":7,"text":"    return string(w.rbegin(), w.rend());"}]}
+{"solution":"reverse-words/s06","constraint":"C1","verdict":"pass","evidence":[]}
+{"solution":"reverse-words/s06","constraint":"C2","verdict":"violation","evidence":[{"line":9,"text":"    stack<char> st;"},{"line":10,"text":"    string res = \"\";"}]}
+{"solution":"reverse-words/s07","constraint":"C1","verdict":"pass","evidence":[]}
+{"solution":"reverse-words/s07","constraint":"C2","verdict":"violation","evidence":[{"line":6,"text":"    string t = \"\";"},{"line":7,"text":"    for (char c : w) t = c + t;"},{"line":8,"text":"    w = t;"}]}
+{"solution":"reverse-words/s08","constraint":"C1","verdict":"violation","evidence":[{"line":14,"text":"        std::reverse(s.begin() + b, s.begin() + e);"}]}
+{"solution":"reverse-words/s08","constraint":"C2","verdict":"unsure","evidence":[]}
+{"solution":"sort-merge/s01","constraint":"C1","verdict":"pass","evidence":[]}
+{"solution":"sort-merge/s01","constraint":"C2","verdict":"pass","evidence":[{"line":5,"text":"void merge(vector<int>& a, int l, int m, int r) {"},{"line":17,"text":"void mergeSort(vector<int>& a, int l, int r) {"}]}
+{"solution":"sort-merge/s02","constraint":"C1","verdict":"pass","evidence":[]}
+{"solution":"sort-merge/s02","constraint":"C2","verdict":"pass","evidence":[{"line":6,"text":"void tron(int trai, int giua, int phai) {"},{"line":21,"text":"    for (int doRong = 1; doRong < n; doRong *= 2) {"},{"line":22,"text":"        for (int trai = 0; trai < n; trai += 2 * doRong) {"}]}
+{"solution":"sort-merge/s03","constraint":"C1","verdict":"pass","evidence":[]}
+{"solution":"sort-merge/s03","constraint":"C2","verdict":"pass","evidence":[{"line":8,"text":"    void sort(int* a, int lo, int hi) {   // sap xep doan [lo, hi)"},{"line":11,"text":"        sort(a, lo, mid);"},{"line":12,"text":"        sort(a, mid, hi);"},{"line":13,"text":"        int i = lo, j = mid, k = 0;"},{"line":14,"text":"        while (i < mid || j < hi) {"}]}
+{"solution":"sort-merge/s04","constraint":"C1","verdict":"violation","evidence":[{"line":11,"text":"    sort(a.begin(), a.end());"}]}
+{"solution":"sort-merge/s04","constraint":"C2","verdict":"unsure","evidence":[]}
+{"solution":"sort-merge/s05","constraint":"C1","verdict":"violation","evidence":[{"line":12,"text":"    stable_sort(a.begin() + lo, a.begin() + hi);"}]}
+{"solution":"sort-merge/s05","constraint":"C2","verdict":"violation","evidence":[{"line":12,"text":"    stable_sort(a.begin() + lo, a.begin() + hi);"}]}
+{"solution":"sort-merge/s06","constraint":"C1","verdict":"pass","evidence":[]}
+{"solution":"sort-merge/s06","constraint":"C2","verdict":"violation","evidence":[{"line":3,"text":"void merge(int a[], int n) {"},{"line":4,"text":"    for (int i = 0; i + 1 < n; i++)"},{"line":5,"text":"        if (a[i] > a[i + 1]) {"},{"line":10,"text":"void merge_sort(int a[], int n) {"},{"line":11,"text":"    for (int lan = 0; lan < n; lan++)"},{"line":12,"text":"        merge(a, n);"}]}
+{"solution":"sort-merge/s07","constraint":"C1","verdict":"pass","evidence":[]}
+{"solution":"sort-merge/s07","constraint":"C2","verdict":"violation","evidence":[{"line":8,"text":"    priority_queue<int, vector<int>, greater<int>> pq(a.begin(), a.end());"}]}
+{"solution":"sort-merge/s08","constraint":"C1","verdict":"violation","evidence":[{"line":4,"text":"#define SORT(v) std::sort(all(v))"}]}
+{"solution":"sort-merge/s08","constraint":"C2","verdict":"violation","evidence":[{"line":25,"text":"    SORT(v);"}]}
+{"solution":"sort-merge/s09","constraint":"C1","verdict":"pass","evidence":[]}
+{"solution":"sort-merge/s09","constraint":"C2","verdict":"violation","evidence":[{"line":10,"text":"    for (int i = 1; i < n; i++) {"},{"line":11,"text":"        int key = a[i];"},{"line":13,"text":"        while (j >= 0 && a[j] > key) {"}]}
