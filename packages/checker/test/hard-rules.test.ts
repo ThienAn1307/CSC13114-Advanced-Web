@@ -931,3 +931,76 @@ describe('decideBanList: enumerators are declarations, labels are not uses', () 
     expect(lines(ban, code(...STD, ...body))).toEqual(expected);
   });
 });
+
+// Found by testing our own checker as an attacker would (2026-11-26).
+describe('decideBanList: alias declarations and token pasting', () => {
+  // [what, ban list, code after the two STD lines]
+  const passing: [string, string, string[]][] = [
+    [
+      'an alias declaration that takes the banned name',
+      SORT_BAN,
+      ['using sort = int;', 'int main() { sort x = 3; return x; }'],
+    ],
+    [
+      'an alias template that takes the banned name, in a block',
+      SORT_BAN,
+      [
+        'template <class T> using sort = T;',
+        'int main() { using max = sort<int>; max x = 1; return x; }',
+      ],
+    ],
+  ];
+  it.each(passing)('passes %s', (_what, ban, body) => {
+    expect(decideBanList(ban, code(...STD, ...body))).toEqual({ verdict: 'pass', evidence: [] });
+  });
+
+  // [what, ban list, code after the two STD lines, lines of the violations]
+  const caught: [string, string, string[], number[]][] = [
+    [
+      'the library call outside the block of an alias of that name',
+      SORT_BAN,
+      [
+        'void f() { using sort = int; sort x = 0; }',
+        'int main() { vector<int> v(3); sort(v.begin(), v.end()); }',
+      ],
+      [4],
+    ],
+    [
+      'a library call next to an alias of another name',
+      SORT_BAN,
+      ['using Index = int;', 'int main() { Index a[3] = {3, 2, 1}; std::sort(a, a + 3); }'],
+      [4],
+    ],
+  ];
+  it.each(caught)('catches %s', (_what, ban, body, expected) => {
+    expect(lines(ban, code(...STD, ...body))).toEqual(expected);
+  });
+
+  it('does not decide a pass when `##` in a macro could spell a banned name', () => {
+    const source = code(
+      '#include <vector>',
+      '#include <algorithm>',
+      '#define J(a, b) a##b',
+      'int main() {',
+      '    std::vector<int> v(3);',
+      '    std::J(so, rt)(v.begin(), v.end());',
+      '}',
+    );
+    expect(decideBanList(SORT_BAN, source)).toBeNull();
+  });
+
+  it('still catches a banned name it can see in code that pastes tokens', () => {
+    const source = code(
+      '#include <bits/stdc++.h>',
+      '#define CAT(a, b) a##b',
+      'int CAT(my, count) = 0;',
+      'int main() { vector<int> v(3); std::sort(v.begin(), v.end()); }',
+    );
+    expect(lines(SORT_BAN, source)).toEqual([4]);
+  });
+
+  it('still decides code whose only `#` is the stringizing one', () => {
+    const source = code('#include <cstdio>', '#define SHOW(x) puts(#x)', 'int main() { SHOW(a); }');
+    expect(decideBanList(SORT_BAN, source)).toEqual({ verdict: 'pass', evidence: [] });
+  });
+});

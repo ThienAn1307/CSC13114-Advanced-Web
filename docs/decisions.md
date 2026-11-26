@@ -136,7 +136,7 @@ One codebase in `apps/worker`, two entrypoints, two services in compose. `judge`
 - as a keyword (`for`, `goto`);
 - as a member (`.rbegin()`, `->rend()`) when the banned name has no namespace.
 
-A macro or alias that names a banned function is caught at its `#define`, `using` or `typedef` line, because those lines are code. If a backtick holds something that is not a name, the hard rule does not decide that constraint. No rule names a problem.
+A macro or alias that names a banned function is caught at its `#define`, `using` or `typedef` line, because those lines are code. If a backtick holds something that is not a name, the hard rule does not decide that constraint. An alias declaration (`using sort = int;`) declares the name on its left. The tokenizer does not run the preprocessor, so `##` can make a name that is written nowhere (`J(so, rt)` is `sort`): when no banned name is seen and a `#define` pastes tokens, the hard rule does not decide that constraint, and it goes to the model. No rule names a problem.
 
 **Why:** the traps (the student's own `sort`, a banned name in a comment or a string, `<algorithm>` included only for `std::swap`) must not fire (PA#3 criterion 3). A tokenizer needs no native dependency, and every rule can be explained at the oral. **Alternative:** tree-sitter-cpp (WASM) for a full syntax tree; the rules about names would still be ours.
 

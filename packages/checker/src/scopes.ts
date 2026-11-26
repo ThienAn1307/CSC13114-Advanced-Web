@@ -96,6 +96,7 @@ export function visibleNames(tokens: Token[]): ((i: number) => boolean) | null {
     const [prev, next, bracket] = [text(p), text(i + 1), text(around[i]!)];
     const inFor = text(around[i]! - 1) === 'for';
     if (DECLARES_NEXT_NAME.has(prev)) return text(p - 1) !== 'using';
+    if (prev === 'using') return next === '='; // `using sort = int;`, not `using std::sort;`
     // `[max = 3]` and `auto [a, max]`
     if (bracket === '[') return next === '=' || /^(auto|&&?)$/.test(text(around[i]! - 1));
     if (prev === '(' && p < i - 1 && next === ')')
