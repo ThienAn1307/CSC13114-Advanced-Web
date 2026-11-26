@@ -37,3 +37,54 @@ jobs:
       - run: npm ci
       - run: npm run check
       - run: npm audit --audit-level=high
+
+  # PA#3 criterion 6: the checker image runs with the model off and no network, eval.mjs accepts its
+  # output (exit 0 or 1, never 2) with exactly the counts pinned below, and our own cases are Accepted.
+  checker-model-off:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+      - name: Our own cases compile with g++ -std=c++17 -O2 and pass every test
+        run: >-
+          docker run --rm --network none -v "$PWD/eval/own:/data:ro"
+          gcc:14@sha256:a6f425a380ee03e682df3b436fc9077c544fb0fea0a9cab943c3b8320db10765
+          sh /data/check-accepted.sh
+      - name: Build the checker image
+        run: docker build -f checker/Dockerfile -t leetkob-checker packages/checker
+      - name: Run it with MODEL_OFF=1 and no network, then score it
+        run: |
+          mkdir -p out
+          for set in dev own; do
+            docker run --rm --network none -e MODEL_OFF=1 --user "$(id -u):$(id -g)" \
+              -v "$PWD/eval/$set:/data:ro" -v "$PWD/out:/out" \
+              leetkob-checker --data /data --out "/out/$set.jsonl"
+            set +e
+            node eval/dev/eval.mjs --data "eval/$set" --predictions "out/$set.jsonl" --json "out/$set-summary.json"
+            code=$?
+            set -e
+            echo "eval.mjs on eval/$set exited $code"
+            test "$code" -eq 0 || test "$code" -eq 1
+            # The counts are fixed because no model runs: the hard rules decide every ban-list pair, and
+            # every other pair is unsure (dev 47, own 6). A ban-list pair that turns unsure makes unsure
+            # too high; one that misses a violation, or its evidence line, makes caught too low.
+            node -e "
+              const want = {
+                dev: { missing: 0, wrongful: 0, caught: 15, unsure: 47 },
+                own: { missing: 0, wrongful: 0, caught: 2, unsure: 6 },
+              }['$set'];
+              const got = require('./out/$set-summary.json');
+              for (const key in want) {
+                if (got[key] === want[key]) continue;
+                console.error('eval/$set: ' + key + ' is ' + got[key] + ', expected ' + want[key]);
+                process.exitCode = 1;
+              }
+            "
+          done
