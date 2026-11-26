@@ -143,7 +143,8 @@ function refersTo(use: NameUse, banned: string[], declared: Set<string>, isOwn: 
 
 /**
  * Decides a ban-list constraint from the code alone. Null when the constraint is not a ban list
- * (it is semantic, or its names cannot be read), so the hard rules do not decide it.
+ * (it is semantic, or its names cannot be read), or when no banned name is seen but a macro pastes
+ * tokens, so the hard rules do not decide it.
  */
 export function decideBanList(constraintText: string, source: string): HardRuleVerdict | null {
   const names = banListNames(constraintText);
@@ -173,7 +174,10 @@ export function decideBanList(constraintText: string, source: string): HardRuleV
     }
   });
 
-  if (found.size === 0) return { verdict: 'pass', evidence: [] };
+  // `a##b` makes names that are written nowhere (`J(so, rt)` is `sort`): no pass is decided then,
+  // and the constraint goes to the model like a semantic one. A banned name seen is still a violation.
+  const pastes = tokens.some((token) => token.inDirective && token.text === '##');
+  if (found.size === 0) return pastes ? null : { verdict: 'pass', evidence: [] };
   const lines = source.split('\n').map((l) => l.replace(/\r$/, ''));
   const evidence = [...found.keys()]
     .sort((a, b) => a - b)
