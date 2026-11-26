@@ -88,6 +88,14 @@ describe('no answer in time becomes unsure', () => {
     ]);
   });
 
+  it('answers unsure, cause timeout, even when the model ignores the abort signal', async () => {
+    const result = await run(() => new Promise<string>(() => {}), [MERGE, FREE], 50);
+    expect(result.verdicts).toEqual([
+      expect.objectContaining({ constraintId: 'C2', verdict: 'unsure', unsureCause: 'timeout' }),
+      expect.objectContaining({ constraintId: 'C3', verdict: 'unsure', unsureCause: 'timeout' }),
+    ]);
+  });
+
   it('gives the model the abort signal, so the request itself is cancelled', async () => {
     let signal: AbortSignal | undefined;
     await run(
