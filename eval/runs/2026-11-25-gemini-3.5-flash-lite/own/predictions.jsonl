@@ -1,0 +1,12 @@
+{"solution":"balanced-brackets/s01","constraint":"C1","verdict":"pass","evidence":[]}
+{"solution":"balanced-brackets/s01","constraint":"C2","verdict":"pass","evidence":[{"line":4,"text":"char st[100005];"},{"line":8,"text":"    int top = 0;"},{"line":13,"text":"            st[top++] = c;"},{"line":16,"text":"            if (top == 0 || st[top - 1] != want) ok = false;"},{"line":17,"text":"            else top--;"}]}
+{"solution":"balanced-brackets/s02","constraint":"C1","verdict":"pass","evidence":[]}
+{"solution":"balanced-brackets/s02","constraint":"C2","verdict":"pass","evidence":[{"line":8,"text":"    struct stack {"},{"line":9,"text":"        char data[100005];"},{"line":10,"text":"        int top = 0;"}]}
+{"solution":"balanced-brackets/s03","constraint":"C1","verdict":"violation","evidence":[{"line":8,"text":"    std::stack<char> st;"}]}
+{"solution":"balanced-brackets/s03","constraint":"C2","verdict":"violation","evidence":[{"line":2,"text":"#include <stack>"},{"line":8,"text":"    std::stack<char> st;"}]}
+{"solution":"balanced-brackets/s04","constraint":"C1","verdict":"violation","evidence":[{"line":10,"text":"    vector<char> st;"}]}
+{"solution":"balanced-brackets/s04","constraint":"C2","verdict":"violation","evidence":[{"line":10,"text":"    vector<char> st;"}]}
+{"solution":"balanced-brackets/s05","constraint":"C1","verdict":"pass","evidence":[]}
+{"solution":"balanced-brackets/s05","constraint":"C2","verdict":"violation","evidence":[{"line":8,"text":"bool group() {"},{"line":11,"text":"        if (!group()) return false;"}]}
+{"solution":"balanced-brackets/s06","constraint":"C1","verdict":"pass","evidence":[]}
+{"solution":"balanced-brackets/s06","constraint":"C2","verdict":"pass","evidence":[{"line":4,"text":"struct CharStack {"},{"line":5,"text":"    char* buf = nullptr;"},{"line":6,"text":"    int top = 0, cap = 0;"},{"line":8,"text":"    void push(char c) {"}]}
