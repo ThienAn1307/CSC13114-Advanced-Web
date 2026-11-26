@@ -779,3 +779,155 @@ describe("decideBanList: the student's own names pass where they are visible", (
     expect(decideBanList(ban, code(...STD, ...body))).toEqual({ verdict: 'pass', evidence: [] });
   });
 });
+
+// Reported by Phú Dinh in the review of PR #16: both were wrongful deductions.
+describe('decideBanList: enumerators are declarations, labels are not uses', () => {
+  const PUSH_BAN = 'Do not use `push`.';
+
+  // [what, ban list, code after the two STD lines]
+  const passing: [string, string, string[]][] = [
+    [
+      'the enumerators of a scoped enum',
+      PUSH_BAN,
+      [
+        'enum class Cmd { push, pop };',
+        'enum struct Op : unsigned char { none = 1, push = 4 };',
+        'int main() { Cmd c = Cmd::push; return c == Cmd::push ? (int)Op::push : 0; }',
+      ],
+    ],
+    [
+      'the enumerators of an unscoped enum, with a value, after a declaration and in a switch',
+      'Do not use `push`, `pop` or `top`.',
+      [
+        'enum Cmd : int { none, push = 2, pop };',
+        'enum Late : short; enum Late : short { top };',
+        'int f(Cmd c) { switch (c) { case push: return 1; case pop: return 2; default: return 0; } }',
+        'int main() { return f(push) + top; }',
+      ],
+    ],
+    [
+      'an unnamed enum and a typedef of one',
+      'Do not use `push` or `pop`.',
+      [
+        'enum { push = 100 };',
+        'typedef enum { low, pop } Level;',
+        'int a[push];',
+        'int main() { Level l = pop; return a[push - 1] + l; }',
+      ],
+    ],
+    [
+      'an enum inside a function',
+      MAX_BAN,
+      ['int main() { enum Kind { min, max }; Kind k = max; return k == max ? 0 : 1; }'],
+    ],
+    [
+      'an enum inside a class, used in it and in an out-of-line member',
+      MAX_BAN,
+      [
+        'struct S { enum Kind { min, max }; Kind k = max; int f(); };',
+        'int S::f() { return k == max; }',
+        'int main() { return S().f() + S::max; }',
+      ],
+    ],
+    [
+      'an enum inside a namespace',
+      MAX_BAN,
+      [
+        'namespace mine { enum Kind { min, max }; int f() { return max; } }',
+        'int main() { return mine::f() + mine::max; }',
+      ],
+    ],
+    [
+      'a label, also one at the end of a block',
+      SORT_BAN,
+      [
+        'int main() {',
+        '    int i = 0;',
+        'sort:',
+        '    if (++i < 3) goto sort;',
+        '    if (i > 5) { qsort: i = 0; }',
+        '    if (i > 9) goto qsort;',
+        '    return 0;',
+        '}',
+      ],
+    ],
+  ];
+  it.each(passing)('passes %s', (_what, ban, body) => {
+    expect(decideBanList(ban, code(...STD, ...body))).toEqual({ verdict: 'pass', evidence: [] });
+  });
+
+  // [what, ban list, code after the two STD lines, lines of the violations]
+  const caught: [string, string, string[], number[]][] = [
+    [
+      'the library call next to a scoped enum, whose enumerators need `Cmd::`',
+      SORT_BAN,
+      [
+        'enum class Cmd { none, sort };',
+        'int main() { vector<int> v; sort(v.begin(), v.end()); return (int)Cmd::sort; }',
+      ],
+      [4],
+    ],
+    [
+      'the library call outside the function whose enum has that name',
+      MAX_BAN,
+      ['int f() { enum { max = 3 }; return max; }', 'int main() { return max(f(), 2); }'],
+      [4],
+    ],
+    [
+      'the library call outside the class whose enum has that name',
+      MAX_BAN,
+      ['struct S { enum { max = 3 }; };', 'int main() { return max(1, 2); }'],
+      [4],
+    ],
+    [
+      'a library name in the value of an enumerator',
+      MAX_BAN,
+      ['enum Size { one = 1, two = max(1, 2) };', 'int main() { return two; }'],
+      [3],
+    ],
+    [
+      'a member call on a library container, next to an enumerator of that name',
+      PUSH_BAN,
+      ['enum Cmd { push, pop };', 'int main() { queue<int> q; q.push(push); return 0; }'],
+      [4],
+    ],
+    [
+      'the library call next to a braced list, which is not an enum',
+      MAX_BAN,
+      [
+        'int f(initializer_list<int> l) { return *l.begin(); }',
+        'int main() { int a = 1; return f({a, max(a, 2)}); }',
+      ],
+      [4],
+    ],
+    [
+      'the library call in a function with the label of that name',
+      SORT_BAN,
+      [
+        'int main() {',
+        '    vector<int> v(3);',
+        '    int i = 0;',
+        'sort:',
+        '    sort(v.begin(), v.end());',
+        '    if (++i < 3) goto sort;',
+        '}',
+      ],
+      [7],
+    ],
+    [
+      'a library name before the `:` of a `case` or of `?:`',
+      'Do not use `CHAR_MAX` or `CHAR_MIN`.',
+      [
+        'int main() {',
+        '    int c = 1, d = 0;',
+        '    switch (c) { case CHAR_MAX: d = 1; }',
+        '    return c ? CHAR_MIN : d;',
+        '}',
+      ],
+      [5, 6],
+    ],
+  ];
+  it.each(caught)('catches %s', (_what, ban, body, expected) => {
+    expect(lines(ban, code(...STD, ...body))).toEqual(expected);
+  });
+});

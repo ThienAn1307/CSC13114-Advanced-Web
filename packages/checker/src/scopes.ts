@@ -15,6 +15,8 @@ const BEFORE_TYPE = new Set([
   ...['', ';', '{', '}', '>', '>>', ']', 'const', 'static', 'inline', 'constexpr', 'typename'],
   ...['struct', 'class', 'extern', 'virtual', 'friend', 'mutable', 'typedef', 'volatile'],
 ]);
+// The words before the `{` of an enum, from `enum` on. Not `enum Kind f() {`, a function.
+const ENUM_HEADER = /^enum( class| struct)?( \[ \[.*\] \])?( (:: )?\w+( :: \w+)*)?( : [\w: ]+)?$/;
 const CLOSER = new Map(Object.entries({ '(': ')', '[': ']', '{': '}' }));
 
 /** Can a declaration of `tokens[i]` be seen from there? Null when the brackets do not balance. */
@@ -24,7 +26,8 @@ export function visibleNames(tokens: Token[]): ((i: number) => boolean) | null {
   const pair: number[] = []; // the matching bracket
   const around: number[] = []; // the innermost bracket around a token, or -1
   const braceAt: number[] = []; // the innermost `{` around a token, or -1
-  const kind = new Map<number, 'class' | 'block'>(); // of a `{`; none for a namespace, an enum, ...
+  // What a `{` opens; none for a namespace, an unnamed class, ...
+  const kind = new Map<number, 'class' | 'block' | 'enum' | 'scoped enum'>();
   const open: number[] = [];
   let membersFileWide = false;
 
@@ -48,6 +51,11 @@ export function visibleNames(tokens: Token[]): ((i: number) => boolean) | null {
     while (start > 0 && ![';', '{', '}'].includes(text(start - 1))) start--;
     const header = code.slice(start, i).map((t) => t.text);
     const last = header.at(-1) ?? '';
+    const enumHeader = header.slice(header.lastIndexOf('enum')).join(' ');
+    if (ENUM_HEADER.test(enumHeader)) {
+      kind.set(i, /^enum (class|struct)\b/.test(enumHeader) ? 'scoped enum' : 'enum');
+      continue;
+    }
     const isClass = header.some(
       (t, k) => /^(class|struct|union)$/.test(t) && !['<', ','].includes(header[k - 1] ?? ''),
     );
@@ -99,6 +107,12 @@ export function visibleNames(tokens: Token[]): ((i: number) => boolean) | null {
     return (p === i - 1 && code[p]?.kind === 'identifier') || typeStartsHere(p, i);
   }
 
+  /** `sort` in `enum Cmd { none, sort = 2 };`. */
+  const isEnumerator = (i: number) =>
+    /enum$/.test(kind.get(around[i]!) ?? '') &&
+    ['{', ','].includes(text(i - 1)) &&
+    [',', '}', '=', '['].includes(text(i + 1));
+
   /** The end of the function that the parameter at `i` belongs to. */
   function functionEnd(i: number): number {
     let k = i;
@@ -121,6 +135,17 @@ export function visibleNames(tokens: Token[]): ((i: number) => boolean) | null {
   };
   code.forEach((token, i) => {
     if (token.text === ';') declaring.delete(around[i]!);
+    if (token.kind === 'identifier' && isEnumerator(i)) {
+      // An enumerator counts around its enum; one of a scoped enum only in it: outside it is `Cmd::sort`.
+      const own = around[i]!;
+      const outer = braceAt[own]!;
+      if (kind.get(own) === 'scoped enum') count(token.text, own, pair[own]!);
+      else if (kind.get(outer) === 'block') count(token.text, i, pair[outer]!);
+      else if (kind.get(outer) === 'class' && !membersFileWide)
+        count(token.text, outer, pair[outer]!);
+      else count(token.text, 0, code.length);
+      return;
+    }
     if (token.kind !== 'identifier' || !isDeclared(i)) return;
     const brace = braceAt[i]!;
     const isType = DECLARES_NEXT_NAME.has(text(i - 1));
