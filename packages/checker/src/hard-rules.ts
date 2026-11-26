@@ -119,6 +119,12 @@ const sameSegments = (a: string[], b: string[]) =>
 const endsWith = (whole: string[], tail: string[]) =>
   tail.length <= whole.length && sameSegments(whole.slice(whole.length - tail.length), tail);
 
+/** `goto sort;` or the label `sort:` itself: labels have names of their own, never a library's. */
+function isLabel(tokens: Token[], i: number): boolean {
+  const before = tokens[i - 1]?.text ?? '';
+  return before === 'goto' || (tokens[i + 1]?.text === ':' && [';', '{', '}'].includes(before));
+}
+
 /** Does this use of a name refer to the banned name? */
 function refersTo(use: NameUse, banned: string[], declared: Set<string>, isOwn: boolean): boolean {
   const name = use.segments.at(-1)!;
@@ -157,7 +163,7 @@ export function decideBanList(constraintText: string, source: string): HardRuleV
         const use = nameUse(tokens, i, aliases);
         // If the brackets do not balance, any declaration in the file counts.
         const isOwn = visible ? visible(i) : declared.has(token.text);
-        hit = use !== null && refersTo(use, segments, declared, isOwn);
+        hit = use !== null && !isLabel(tokens, i) && refersTo(use, segments, declared, isOwn);
       }
       if (hit) found.set(token.line, (found.get(token.line) ?? new Set()).add(banned));
     }
