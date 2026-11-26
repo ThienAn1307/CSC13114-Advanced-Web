@@ -1,0 +1,30 @@
+LeeTKOB eval · data D:\Workspaces\School\Advanced_Web\LeeTKOB\eval\dev · predictions D:\Workspaces\School\Advanced_Web\LeeTKOB\eval\runs\2026-11-25-gemini-3.5-flash-lite\dev\predictions.jsonl
+47 solutions, 102 (solution, constraint) pairs: 65 labelled pass, 37 labelled violation
+
+Metrics
+  wrongful deductions    2                  FAIL  (target = 0)
+  recall                 91.9% (34/37)      ok    (target >= 90.0%)
+  unsure rate            2.9% (3/102)       ok    (target <= 20.0%)
+
+By tag (a pair can carry several tags)
+  tag        pairs  pass  viol  caught  wrongful  unsure
+  obvious       15     0    15   13/15         0       2
+  disguised     22     0    22   21/22         0       0
+  trap          14    14     0       -         0       0
+  injection      5     0     5     5/5         0       0
+  style         11    11     0       -         1       0
+  (none)        40    40     0       -         1       1
+
+Wrongful deductions (2)
+  reverse-words/s02 C2 [style] labelled pass; predicted violation; evidence 14:"string tu;", 16:"while (cin >> tu) {", 17:"daoChuoi(tu, 0, (int)tu.size() - 1);"
+  reverse-words/s04 C2 [-] labelled pass; predicted violation; evidence 5:"string w;", 7:"while (cin >> w) {", 8:"reverse(w.begin(), w.end());"
+
+Violations not caught (3)
+  sort-merge/s04 C2 [obvious] labelled violation @ lines 11; predicted unsure; evidence (none)
+      -> predicted unsure
+  dynamic-array/s04 C2 [obvious] labelled violation @ lines 5,7; predicted unsure; evidence (none)
+      -> predicted unsure
+  dynamic-array/s07 C3 [disguised] labelled violation @ lines 8,10; predicted pass; evidence 17:"arr = new int[cap];", 8:"int* moi = new int[cap * 2];", 23:"delete[] arr;"
+      -> predicted pass
+
+FAIL (2 wrongful deduction(s))
