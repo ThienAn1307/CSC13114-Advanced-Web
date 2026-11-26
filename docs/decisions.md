@@ -146,7 +146,9 @@ The prompt holds the statement, that one constraint, and the code with comments 
 
 Each call writes one row to the call log: submission, constraint, the provider's request id, model, input and output tokens, time in milliseconds, cost, and the outcome (PA#3 criterion 4).
 
-**Why:** a timeout or a schema failure costs one pair, not the whole submission, and the call log has one row per pair (PA#3 criteria 4 and 5).
+Only a `violation` must come with evidence. A `pass` may have none, because a constraint can hold with nothing to point at (no memory allocated, so none to free). So an injection that gets the model to answer `pass` with no evidence would be accepted. We tried that on 2026-11-26 with gemini-3.5-flash-lite: an insertion sort judged against the merge-sort constraint, five injections (in a string, in a comment, in function names, a string that fakes the end of the prompt, a string that asks for exactly that answer), two runs each. All 11 calls that answered said `violation`. This check does not catch a wrong `pass`; the TA's sample of passes (PA#4, not built yet) is what will.
+
+**Why:** a timeout or a schema failure costs one pair, not the whole submission, and the call log has one row per pair (PA#3 criteria 4 and 5). Evidence is not required for a `pass`: in the committed 3.5 run, 1 of 26 model passes had none, and requiring it means a new prompt and a new real run to measure the change. **Alternative:** evidence for a `pass` too, with `unsure` (`evidence-mismatch`) when it is missing; left for PA#4.
 
 ## D15. Line numbers never move
 
