@@ -21,7 +21,15 @@ export async function createApp(dependencies: ApiDependencies): Promise<NestExpr
   app.use((request: SubmissionRequest, response: Response, next: NextFunction) => {
     // Capture once, before reading or parsing the request body.
     request.receivedAt = new Date();
-    if (request.method !== 'POST' || !/^\/v1\/labs\/[^/]+\/submissions\/?$/i.test(request.path))
+    const isSubmission = /^\/v1\/labs\/[^/]+\/submissions\/?$/i.test(request.path);
+    if (
+      request.method !== 'POST' ||
+      !(
+        isSubmission ||
+        /^\/v1\/auth\/login\/?$/i.test(request.path) ||
+        /^\/v1\/classes(?:\/[^/]+\/(?:tas|students|labs))?\/?$/i.test(request.path)
+      )
+    )
       return next();
     const contentType = request.headers['content-type'];
     if (
@@ -41,7 +49,11 @@ export async function createApp(dependencies: ApiDependencies): Promise<NestExpr
           typeof error === 'object' && error !== null && 'type' in error ? error.type : undefined;
         return next(
           type === 'entity.too.large'
-            ? new Problem('source-too-large', 'The body exceeds 262,144 bytes.')
+            ? isSubmission
+              ? new Problem('source-too-large', 'The body exceeds 262,144 bytes.')
+              : new Problem('validation-failed', 'The body exceeds 262,144 bytes.', [
+                  { pointer: '', detail: 'request body is too large' },
+                ])
             : internalProblem(),
         );
       }

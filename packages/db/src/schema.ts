@@ -20,6 +20,7 @@ export const users = pgTable(
     id: uuid('id').primaryKey(),
     email: text('email').notNull().unique(),
     displayName: text('display_name').notNull(),
+    passwordHash: text('password_hash'),
     role: text('role', { enum: ['student', 'ta', 'admin'] }).notNull(),
     createdAt: timestamp('created_at', ms).notNull().defaultNow(),
   },
@@ -57,13 +58,51 @@ export const labs = pgTable(
       .notNull()
       .references(() => classes.id),
     title: text('title').notNull(),
+    statement: text('statement').notNull().default(''),
+    cpuLimitSeconds: integer('cpu_limit_seconds').notNull().default(1),
+    memoryLimitMb: integer('memory_limit_mb').notNull().default(256),
     opensAt: timestamp('opens_at', ms).notNull(),
     deadlineAt: timestamp('deadline_at', ms).notNull(),
   },
   (t) => [
     check('labs_window_check', sql`${t.deadlineAt} > ${t.opensAt}`),
+    check('labs_cpu_limit_check', sql`${t.cpuLimitSeconds} between 1 and 5`),
+    check('labs_memory_limit_check', sql`${t.memoryLimitMb} between 64 and 512`),
     index('labs_class_idx').on(t.classId),
   ],
+);
+
+/** Theo FAQ-06: https://github.com/tkob-team/LeeTKOB-FAQ/blob/main/FAQ.md#faq-06 */
+export const labConstraints = pgTable(
+  'lab_constraints',
+  {
+    id: uuid('id').primaryKey(),
+    labId: uuid('lab_id')
+      .notNull()
+      .references(() => labs.id),
+    text: text('text').notNull(),
+    deductionHundredths: integer('deduction_hundredths').notNull(),
+    position: integer('position').notNull(),
+  },
+  (t) => [
+    check('lab_constraints_deduction_check', sql`${t.deductionHundredths} between 0 and 1000`),
+    index('lab_constraints_lab_idx').on(t.labId, t.position),
+  ],
+);
+
+/** Hidden test data must never be returned to students (FAQ-02). */
+export const labTestCases = pgTable(
+  'lab_test_cases',
+  {
+    id: uuid('id').primaryKey(),
+    labId: uuid('lab_id')
+      .notNull()
+      .references(() => labs.id),
+    input: text('input').notNull(),
+    expectedOutput: text('expected_output').notNull(),
+    position: integer('position').notNull(),
+  },
+  (t) => [index('lab_test_cases_lab_idx').on(t.labId, t.position)],
 );
 
 export const submissions = pgTable(
